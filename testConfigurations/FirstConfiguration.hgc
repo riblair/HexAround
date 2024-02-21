@@ -1,0 +1,10 @@
+/* Test HexAround Game Configuration (.hgc) file */
+
+CREATURES:
+	butterfly [WALKING QUEEN]
+	GRASSHOPPER 3 [JUMPING INTRUDING]
+
+PLAYERS:
+	RED
+		butterfly 1,
+		grasshopper 5

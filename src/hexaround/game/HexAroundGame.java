@@ -2,6 +2,8 @@ package hexaround.game;
 
 import hexaround.config.CreatureDefinition;
 import hexaround.config.GameConfiguration;
+import hexaround.game.MoveHandlers.MoveHandler;
+import hexaround.game.MoveHandlers.WalkHandler;
 import hexaround.required.CreatureName;
 import hexaround.required.CreatureProperty;
 import hexaround.required.MoveResponse;
@@ -18,12 +20,11 @@ public class HexAroundGame implements IHexAroundGameManager {
     // for keeping track of whose turn it is currently. (Not needed now)
     protected boolean blueTurn;
     protected int turnCounter;
-
     protected Point blueButterfly;
     protected Point redButterfly;
 
     // board keeps track of placed pieces with framework <Point, piece>
-    protected HashMap<Point, Creature> board;
+    protected Board board;
 
     // legalSpaces keeps track of free spaces for red pieces with framework <Point, Point>
     protected  HashMap<Point, Point> redLegalSpaces;
@@ -41,31 +42,13 @@ public class HexAroundGame implements IHexAroundGameManager {
         definitions = new HashMap<>();
         config.creatures().forEach( (c) -> definitions.put(c.name(),c)); // adds every Creature Definition to the Map
 
-        this.board = new HashMap<>();
+        this.board = new Board();
         this.redLegalSpaces = new HashMap<>();
         this.blueLegalSpaces = new HashMap<>();
         this.blueTurn = true;
         this.turnCounter = 1; // game starts on turn 1 not 0,
         this.blueButterfly = null;
         this.redButterfly = null;
-    }
-
-    /**
-     * Given the x and y-coordinates for a hex, return the name
-     * of the creature on that coordinate.
-     * @param x
-     * @param y
-     * @return the name of the creature on (x, y), or null if there
-     *  is no creature.
-     */
-    public CreatureName getCreatureAt(int x, int y) {
-        // There will be some container that has key as point, and value of creature
-        // access container and see if something is there
-        Creature c =  board.get(new Point(x,y));
-        if( c == null) {
-            return null;
-        }
-        return c.getDef().name();
     }
 
     // You cannot take a turn (move / place) after turn 4 without the butterfly being placed
@@ -88,29 +71,6 @@ public class HexAroundGame implements IHexAroundGameManager {
     }
 
     /**
-     * Determine if the creature at the x and y-coordinates has the specified
-     * property. You can assume that there will be a creature at the specified
-     * location.
-     * @param x
-     * @param y
-     * @param property the property to look for.
-     * @return true if the creature at (x, y) has the specified property,
-     *  false otherwise.
-     */
-
-    public boolean hasProperty(int x, int y, CreatureProperty property) {
-        // call get creature,
-        CreatureName creature = this.getCreatureAt(x,y);
-
-        CreatureDefinition def = definitions.get(creature);
-
-        for (CreatureProperty prop : def.properties()) {
-            if(prop.toString().equals(property.toString())) return true;
-        }
-        return false;
-    }
-
-    /**
      * Given the x and y-coordinate of a hex, determine if there is a
      * piece on that hex on the board.
      * @param x
@@ -119,39 +79,13 @@ public class HexAroundGame implements IHexAroundGameManager {
      */
 
     public boolean isOccupied(int x, int y) {
-        return this.getCreatureAt(x,y) != null;
-    }
-
-    private int getDistance(int x1, int y1, int x2, int y2) {
-        int yDelta = y2 - y1;
-        int xDelta = x2 - x1;
-
-        // two cases, if (+,-) / (-,+) then the distance is yDelta + xDelta
-        // else distance is the highest of the two values
-
-        int totalDist = max(abs(xDelta), abs(yDelta));
-
-        if(Integer.signum(yDelta) == Integer.signum(xDelta)) {
-            totalDist = abs(yDelta) + abs(xDelta);
-        }
-        return totalDist;
-    }
-
-    private Collection<Point> getNeighbors(Point p) {
-        Collection<Point> neighbors = new LinkedList<>();
-        neighbors.add(new Point(p.x, p.y-1));
-        neighbors.add(new Point(p.x+1, p.y-1));
-        neighbors.add(new Point(p.x+1, p.y));
-        neighbors.add(new Point(p.x, p.y+1));
-        neighbors.add(new Point(p.x-1, p.y+1));
-        neighbors.add(new Point(p.x-1, p.y));
-        return neighbors;
+        return this.board.getCreatureAt(new Point(x,y)) != null;
     }
 
     private boolean isButterflySurrounded(boolean blue) {
         Point p = blue ? this.blueButterfly : this.redButterfly;
 
-        Collection<Point> neighbors = this.getNeighbors(p);
+        Collection<Point> neighbors = this.board.getNeighbors(p);
         int numOccupied = 0;
 
         for(Point n : neighbors) {
@@ -161,43 +95,6 @@ public class HexAroundGame implements IHexAroundGameManager {
         System.out.printf("Surrounding cells: %d\n", numOccupied);
         return numOccupied == 6;
 
-    }
-
-    /**
-     * Given the coordinates for two hexes, (x1, y1) and (x2, y2),
-     * return whether the piece at (x1, y1) could reach the other
-     * hex.
-     * You can assume that there will be a piece at (x1, y1).
-     * The distance is just the distance between the two hexes. You
-     * do not have to do any other checking.
-     * @param x1
-     * @param y1
-     * @param x2
-     * @param y2
-     * @return true if the distance between the two hexes is less
-     * than or equal to the maximum distance property for the piece
-     * at (x1, y1). Return false otherwise.
-     */
-
-    public boolean canReach(int x1, int y1, int x2, int y2) {
-        Point p = new Point(x1,y1);
-        Creature creature = board.get(p);
-        // get the creatures max distance from definition
-
-        int dist = this.getDistance(x1,y1,x2,y2);
-        return dist <= creature.getDef().maxDistance();
-    }
-
-    // Returns true if no enemy creatures are adjacent, else return false
-    private boolean enemyAdjacency(boolean blue, Point unoccupiedPoint) {
-        Collection<Point> neighbors = getNeighbors(unoccupiedPoint);
-        Creature subNCreature;
-        for (Point subN : neighbors) {
-            subNCreature = this.board.get(subN);
-            if (subNCreature != null && subNCreature.getTeam() != blue) return false;
-
-        }
-        return true;
     }
 
     private void updateLegalMoves() {
@@ -216,13 +113,13 @@ public class HexAroundGame implements IHexAroundGameManager {
         this.blueLegalSpaces = new HashMap<>();
         this.redLegalSpaces = new HashMap<>();
 
-        Collection<Point> occupiedSquares =this.board.keySet();
+        Collection<Point> occupiedSquares = this.board.getBoard().keySet();
 
         for(Point occupiedSquare: occupiedSquares) {
-            Collection<Point> neighbors = this.getNeighbors(occupiedSquare);
+            Collection<Point> neighbors = this.board.getNeighbors(occupiedSquare);
             Creature c = this.board.get(occupiedSquare);
             for(Point neighbor : neighbors) {
-                if(!this.isOccupied(neighbor.x,neighbor.y) && this.enemyAdjacency(c.getTeam(), neighbor)) {
+                if(!this.isOccupied(neighbor.x,neighbor.y) && this.board.enemyAdjacency(c.getTeam(), neighbor)) {
                         if(c.getTeam()) this.blueLegalSpaces.put(neighbor,neighbor);
                         else this.redLegalSpaces.put(neighbor, neighbor);
                     }
@@ -253,7 +150,7 @@ public class HexAroundGame implements IHexAroundGameManager {
         LinkedList<Point> occupied_Neighbors = new LinkedList<>();
         Set<Point> visited = new HashSet<>();
 
-        Set<Point> keySet = this.board.keySet();
+        Set<Point> keySet = this.board.getBoard().keySet();
 
         // Ugly way to get an element from the hashset, but that's java...
         for(Point key : keySet) {
@@ -265,7 +162,7 @@ public class HexAroundGame implements IHexAroundGameManager {
         while(!occupied_Neighbors.isEmpty()) {
             curKey = occupied_Neighbors.pop();
             visited.add(curKey);
-            neighbors = this.getNeighbors(curKey);
+            neighbors = this.board.getNeighbors(curKey);
             for( Point neighbor : neighbors) {
                 if(this.isOccupied(neighbor.x, neighbor.y) && !visited.contains(neighbor)) {
                     occupied_Neighbors.add(neighbor);
@@ -292,9 +189,6 @@ public class HexAroundGame implements IHexAroundGameManager {
      * @return a response, or null. It is not going to be checked.
      */
 
-    /* TODO:
-     *  Check for Butterfly after turn 4
-     */
 
     @Override
     public MoveResponse placeCreature(CreatureName creature, int x, int y) {
@@ -393,10 +287,11 @@ public class HexAroundGame implements IHexAroundGameManager {
         Point toP = new Point(toX, toY);
         Creature c = this.board.get(fromP);
 
+        /* All checks within this section are used irrespective of attributes */
+
         // if its turn 4 and they are trying to move a creature w/out butterfly placed, we throw an invalid move response
         boolean legalCheck1 = this.butterflyCheck();
         boolean legalCheck2 = c != null;
-
 
         if(!legalCheck1 || !legalCheck2) {
             System.out.printf("""
@@ -408,11 +303,15 @@ public class HexAroundGame implements IHexAroundGameManager {
         }
 
         boolean legalCheck3 = c.getDef().name().toString().equals(creature.toString());
-        System.out.printf("c.name() : %s, creature.name() : %s \n", c.getDef().name().toString(), creature.toString());
+        boolean legalCheck4 = c.getTeam() == this.blueTurn;
+
+
+//        System.out.printf("c.name() : %s, creature.name() : %s \n", c.getDef().name().toString(), creature.toString());
 
         // rework actual moving section to handle different types of movements (walking, flying)
 
-        boolean legalCheck4 = c.getDef().maxDistance() >= this.getDistance(fromX, fromY, toX, toY);
+//        boolean legalCheck4 = c.getDef().maxDistance() >= this.getDistance(fromX, fromY, toX, toY);
+        // is the correct teams piece being moved
 
         if(!legalCheck3 || !legalCheck4) {
             System.out.printf("""
@@ -422,6 +321,46 @@ public class HexAroundGame implements IHexAroundGameManager {
             mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
             return mr;
         }
+
+        // handle movement based on attributes (for now, only the movement type attributes)
+
+        CreatureDefinition definition = c.getDef();
+        MoveHandler moveHandler;
+
+//        switch ((CreatureProperty)definition.properties().toArray()[0]) {
+//            case QUEEN:
+//                moveHandler = new WalkHandler(this.blueTurn, this.board.copy(), c, fromP, toP);
+//                break;
+//            case WALKING:
+//
+//                break;
+//            case RUNNING:
+//                System.out.println("UNSUPPORTED CASE [RUNNING]!");
+//                break;
+//            case FLYING:
+//                break;
+//            case JUMPING:
+//                System.out.println("UNSUPPORTED CASE [JUMPING]!");
+//                break;
+//            case INTRUDING:
+//                System.out.println("UNSUPPORTED CASE [INTRUDING]!");
+//                break;
+//            case TRAPPING:
+//                System.out.println("UNSUPPORTED CASE [TRAPPING]!");
+//                break;
+//            case SWAPPING:
+//                System.out.println("UNSUPPORTED CASE [SWAPPING]!");
+//                break;
+//            case KAMIKAZE:
+//                System.out.println("UNSUPPORTED CASE [KAMIKAZE]!");
+//                break;
+//            case HATCHING:
+//                System.out.println("UNSUPPORTED CASE [HATCHING]!");
+//                break;
+//
+//
+//        }
+
 
         this.board.remove(fromP);
         this.board.put(toP, c);

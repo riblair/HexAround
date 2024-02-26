@@ -21,25 +21,34 @@ public class Sub2Tests {
     String hgcFile = "testConfigurations/FirstConfiguration.hgc";
     String hgcFile2 = "testConfigurations/SecondConfiguration.hgc";
 
-    @Test
-    void firstTest() throws IOException {
-        String hgcFile = "testConfigurations/FirstConfiguration.hgc";
-        TestHexAround gameManager =
-                HexAroundGameBuilder.buildTestGameManager(
-                        "testConfigurations/FirstConfiguration.hgc");
+    public void setup () {
+        try {
+            testGameManager = HexAroundGameBuilder.buildTestGameManager(
+                    "testConfigurations/Submission2.hgc");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 0);
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 1);
 
-//        System.out.println(gameManager.getDefinitions());
-        MoveResponse r = gameManager.placeCreature(GRASSHOPPER, 5, 42);
-//        System.out.println(r);
-        assertEquals(GRASSHOPPER,gameManager.getCreatureAt(5, 42));
+        testGameManager.placeCreature(CreatureName.DOVE, 0, -1);
+        testGameManager.placeCreature(CreatureName.TURTLE, -1, 2);
+
+        testGameManager.placeCreature(CreatureName.TURTLE, -1, -1);
+        testGameManager.placeCreature(CreatureName.DOVE, 0, 2);
+
+        testGameManager.placeCreature(CreatureName.DOVE, 0, -2);
+        testGameManager.placeCreature(CreatureName.DOVE, 1, 1);
+
+        testGameManager.placeCreature(CreatureName.TURTLE, 1, -2);
+        testGameManager.placeCreature(CreatureName.TURTLE, 2, 0);
     }
-
 
     // not placing
     @Test
     void testInit() throws IOException {
         testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile);
-        HashMap<Point, Creature> testBoard = testGameManager.getBoard();
+        Board testBoard = testGameManager.getBoard();
         HashMap<Point, Point> testRed = testGameManager.getTeamLegalSpaces(false);
         HashMap<Point, Point> testBlue = testGameManager.getTeamLegalSpaces(true);
         HashMap<CreatureName, CreatureDefinition> testDefs = testGameManager.getDefinitions();
@@ -49,7 +58,7 @@ public class Sub2Tests {
         assertNotNull(testBlue);
         assertNotNull(testDefs);
 
-        assertTrue(testBoard.isEmpty());
+        assertTrue(testBoard.getBoard().isEmpty());
         assertTrue(testRed.isEmpty());
         assertTrue(testBlue.isEmpty());
         assertFalse(testDefs.isEmpty()); // there should NOT be 0 entries with this hgc file
@@ -64,11 +73,11 @@ public class Sub2Tests {
         testGameManager.placeCreature(GRASSHOPPER, 1,0);
         testGameManager.placeCreature(HORSE, -1,1);
 
-        assertEquals(testGameManager.getCreatureAt(0,0), BUTTERFLY);
-        assertEquals(testGameManager.getCreatureAt(1,0), GRASSHOPPER);
-        assertEquals(testGameManager.getCreatureAt(-1,1), HORSE);
+        assertEquals(testGameManager.getBoard().getCreatureAt(0,0).getDef().name(), BUTTERFLY);
+        assertEquals(testGameManager.getBoard().getCreatureAt(1,0).getDef().name(), GRASSHOPPER);
+        assertEquals(testGameManager.getBoard().getCreatureAt(-1,1).getDef().name(), HORSE);
 
-        assertNull(testGameManager.getCreatureAt(-2,-2));
+        assertNull(testGameManager.getBoard().getCreatureAt(-2,-2));
     }
 
     @Test
@@ -94,16 +103,16 @@ public class Sub2Tests {
         testGameManager.placeCreature(GRASSHOPPER, 1,0);
         testGameManager.placeCreature(HORSE, -1,1);
 
-        assertTrue(testGameManager.hasProperty(0,0, CreatureProperty.WALKING ));
-        assertTrue(testGameManager.hasProperty(0,0, CreatureProperty.QUEEN ));
-        assertFalse(testGameManager.hasProperty(0,0, CreatureProperty.JUMPING ));
+        assertTrue(testGameManager.getBoard().hasProperty(0,0, CreatureProperty.WALKING ));
+        assertTrue(testGameManager.getBoard().hasProperty(0,0, CreatureProperty.QUEEN ));
+        assertFalse(testGameManager.getBoard().hasProperty(0,0, CreatureProperty.JUMPING ));
 
-        assertTrue(testGameManager.hasProperty(1,0, CreatureProperty.JUMPING ));
-        assertTrue(testGameManager.hasProperty(1,0, CreatureProperty.INTRUDING ));
-        assertFalse(testGameManager.hasProperty(1,0, CreatureProperty.RUNNING ));
+        assertTrue(testGameManager.getBoard().hasProperty(1,0, CreatureProperty.JUMPING ));
+        assertTrue(testGameManager.getBoard().hasProperty(1,0, CreatureProperty.INTRUDING ));
+        assertFalse(testGameManager.getBoard().hasProperty(1,0, CreatureProperty.RUNNING ));
 
-        assertTrue(testGameManager.hasProperty(-1,1, CreatureProperty.JUMPING ));
-        assertFalse(testGameManager.hasProperty(-1,1, CreatureProperty.SWAPPING ));
+        assertTrue(testGameManager.getBoard().hasProperty(-1,1, CreatureProperty.JUMPING ));
+        assertFalse(testGameManager.getBoard().hasProperty(-1,1, CreatureProperty.SWAPPING ));
     }
 
     @Test
@@ -114,43 +123,43 @@ public class Sub2Tests {
         testGameManager.placeCreature(GRASSHOPPER, 1,0);
 
         // 1 dist butteryfly test in all directions
-        assertTrue(testGameManager.canReach(0,0, 0,1));
-        assertTrue(testGameManager.canReach(0,0, 1,0));
-        assertTrue(testGameManager.canReach(0,0, 1,-1));
-        assertTrue(testGameManager.canReach(0,0, 0,-1));
-        assertTrue(testGameManager.canReach(0,0, -1,0));
-        assertTrue(testGameManager.canReach(0,0, -1,1));
+        assertTrue(testGameManager.getBoard().canReach(0,0, 0,1));
+        assertTrue(testGameManager.getBoard().canReach(0,0, 1,0));
+        assertTrue(testGameManager.getBoard().canReach(0,0, 1,-1));
+        assertTrue(testGameManager.getBoard().canReach(0,0, 0,-1));
+        assertTrue(testGameManager.getBoard().canReach(0,0, -1,0));
+        assertTrue(testGameManager.getBoard().canReach(0,0, -1,1));
 
-        assertFalse(testGameManager.canReach(0,0, -2,1));
+        assertFalse(testGameManager.getBoard().canReach(0,0, -2,1));
 
 
         // 3 dist Grasshopper test in all directions
-        assertTrue(testGameManager.canReach(1,0, 0,3));
-        assertTrue(testGameManager.canReach(1,0, 1,3));
-        assertTrue(testGameManager.canReach(1,0, 2,2));
-        assertTrue(testGameManager.canReach(1,0, 3,1));
-        assertTrue(testGameManager.canReach(1,0, 4,0));
-        assertTrue(testGameManager.canReach(1,0, 4,-1));
-        assertTrue(testGameManager.canReach(1,0, 4,-2));
-        assertTrue(testGameManager.canReach(1,0, 4,-3));
-        assertTrue(testGameManager.canReach(1,0, 3,-3));
-        assertTrue(testGameManager.canReach(1,0, 2,-3));
-        assertTrue(testGameManager.canReach(1,0, 2,-2));
-        assertTrue(testGameManager.canReach(1,0, 1,-3));
-        assertTrue(testGameManager.canReach(1,0, 0,-2));
-        assertTrue(testGameManager.canReach(1,0, -1,-1));
-        assertTrue(testGameManager.canReach(1,0, -2,0));
-        assertTrue(testGameManager.canReach(1,0, -2,1));
-        assertTrue(testGameManager.canReach(1,0, -2,2));
-        assertTrue(testGameManager.canReach(1,0, -2,3));
-        assertTrue(testGameManager.canReach(1,0, -1,3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 0,3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 1,3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 2,2));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 3,1));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 4,0));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 4,-1));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 4,-2));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 4,-3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 3,-3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 2,-3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 2,-2));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 1,-3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, 0,-2));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -1,-1));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -2,0));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -2,1));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -2,2));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -2,3));
+        assertTrue(testGameManager.getBoard().canReach(1,0, -1,3));
 
-        assertFalse(testGameManager.canReach(1,0, 3,3));
-        assertFalse(testGameManager.canReach(1,0, 5,1));
-        assertFalse(testGameManager.canReach(1,0, 3,-4));
-        assertFalse(testGameManager.canReach(1,0, 0,-3));
-        assertFalse(testGameManager.canReach(1,0, -2,-1));
-        assertFalse(testGameManager.canReach(1,0, 1,-4));
+        assertFalse(testGameManager.getBoard().canReach(1,0, 3,3));
+        assertFalse(testGameManager.getBoard().canReach(1,0, 5,1));
+        assertFalse(testGameManager.getBoard().canReach(1,0, 3,-4));
+        assertFalse(testGameManager.getBoard().canReach(1,0, 0,-3));
+        assertFalse(testGameManager.getBoard().canReach(1,0, -2,-1));
+        assertFalse(testGameManager.getBoard().canReach(1,0, 1,-4));
     }
 
     @Test
@@ -200,8 +209,8 @@ public class Sub2Tests {
         assertEquals(testGameManager.getBoard().size(), 7);
 
         // no pieces should be placed here, as these were illegally placed
-        assertNull(testGameManager.getCreatureAt(-1,1));
-        assertNull(testGameManager.getCreatureAt(1,0));
+        assertNull(testGameManager.getBoard().getCreatureAt(-1,1));
+        assertNull(testGameManager.getBoard().getCreatureAt(1,0));
 
         assertTrue(testGameManager.getBoard().get(new Point(-2,1)).getTeam()); // this should be a blue piece
     }
@@ -213,19 +222,22 @@ public class Sub2Tests {
         MoveResponse r;
         r = testGameManager.placeCreature(BUTTERFLY, 0,0);
         r = testGameManager.placeCreature(BUTTERFLY, 0,1);
+
         r = testGameManager.placeCreature(GRASSHOPPER, -1,0);
         r = testGameManager.placeCreature(GRASSHOPPER, -1,2);
+
         r = testGameManager.placeCreature(GRASSHOPPER, 1,-1);
         r = testGameManager.placeCreature(GRASSHOPPER, 1,1);
+
         r = testGameManager.placeCreature(GRASSHOPPER, -2,1);
 
-        r = testGameManager.moveCreature(GRASSHOPPER, -2,1, -1,1);
+        r = testGameManager.moveCreature(GRASSHOPPER, -1,2, -1,1);
 
         assertEquals(MoveResult.OK, r.moveResult());
         assertEquals(r.message(), "Legal move");
         assertEquals(testGameManager.getBoard().size(), 7);
-        assertNull(testGameManager.getCreatureAt(-2,1));
-        assertEquals(testGameManager.getCreatureAt(-1,1), GRASSHOPPER);
+        assertNull(testGameManager.getBoard().getCreatureAt(-1,2));
+        assertEquals(testGameManager.getBoard().getCreatureAt(-1,1).getDef().name(), GRASSHOPPER);
 
     }
 
@@ -254,8 +266,8 @@ public class Sub2Tests {
         assertEquals(MoveResult.MOVE_ERROR, r.moveResult());
         assertEquals(r.message(), "Colony is not connected, try again");
         assertEquals(testGameManager.getBoard().size(), 7);
-        assertNull(testGameManager.getCreatureAt(-3,-1));
-        assertEquals(testGameManager.getCreatureAt(-2,1), GRASSHOPPER);
+        assertNull(testGameManager.getBoard().getCreatureAt(-3,-1));
+        assertEquals(testGameManager.getBoard().getCreatureAt(-2,1).getDef().name(), GRASSHOPPER);
 
 
     }
@@ -272,8 +284,8 @@ public class Sub2Tests {
         assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
         assertEquals(r.message(), "Colony is not connected, try again");
         assertEquals(testGameManager.getBoard().size(), 2);
-        assertNull(testGameManager.getCreatureAt(0,-1));
-        assertEquals(testGameManager.getCreatureAt(0,0), BUTTERFLY);
+        assertNull(testGameManager.getBoard().getCreatureAt(0,-1));
+        assertEquals(testGameManager.getBoard().getCreatureAt(0,0).getDef().name(), BUTTERFLY);
 
         r = testGameManager.moveCreature(BUTTERFLY, 0,0, -1, 1); // legal move
 
@@ -321,6 +333,17 @@ public class Sub2Tests {
         Point redButterfly = new Point(0, 2);
         assertEquals(testGameManager.getButterfly(true), blueButterfly);
         assertEquals(testGameManager.getButterfly(false), redButterfly);
+    }
+
+    @Test
+    void testMoveWrongColorPiece() throws IOException {
+        this.setup();
+
+        assertEquals(testGameManager.moveCreature(CreatureName.TURTLE, -1, -1, -1, 0).moveResult(), MoveResult.OK);
+        assertFalse(testGameManager.getCurrentTeamTurn());
+        // this moves a creature of the wrong color!
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, 1, -2, 1, -1).moveResult());
+
     }
 
 }

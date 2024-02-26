@@ -16,7 +16,7 @@ public class TestHexAround extends HexAroundGame {
         super();
     }
 
-    public HashMap<Point, Creature> getBoard() {
+    public Board getBoard() {
         return this.board;
     }
     public HashMap<Point, Point> getTeamLegalSpaces(boolean blueTeam) {
@@ -35,5 +35,7 @@ public class TestHexAround extends HexAroundGame {
     public Point getButterfly(boolean bteam) {
         return bteam ? this.blueButterfly : this.redButterfly;
     }
+
+    public boolean getCurrentTeamTurn() { return this.blueTurn; }
 
 }

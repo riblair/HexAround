@@ -15,9 +15,6 @@ import java.util.HashMap;
 import static hexaround.required.CreatureName.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-// TODO: design actual tests for new features
-// TODO: Write LegalMove Check TESTS - illegal move stuff / legal move response codes
-// TODO: Write update legalSpaces logic tests - if feeling spicy
 public class Sub2Tests {
     HexAroundGame gameManager;
     TestHexAround testGameManager;
@@ -180,28 +177,150 @@ public class Sub2Tests {
     }
 
     @Test
-    void testMoveResponses() throws IOException {
+    void testPlacements() throws IOException {
         testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
 
-        MoveResponse r = testGameManager.placeCreature(BUTTERFLY, 0,0);
-
-        assertEquals(r.moveResult(), MoveResult.OK);
-        assertEquals(r.message(), "Legal move");
-
-
-        r = testGameManager.placeCreature(GRASSHOPPER, -12,-3); // ILLEGAL MOVE breaking 2nd legal clause
-
+        MoveResponse r;
+        r = testGameManager.placeCreature(BUTTERFLY, 0,0);
+        r = testGameManager.placeCreature(BUTTERFLY, 0,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,0);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,2);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,1); // ILLEGAL!
         assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
-        r = testGameManager.placeCreature(HORSE, -1,1);
 
-        assertEquals(r.moveResult(), MoveResult.OK);
-        assertEquals(r.message(), "Legal move");
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,-1);
+        assertTrue(testGameManager.getBoard().get(new Point(1,-1)).getTeam()); // this should be a blue piece
 
-        r = testGameManager.placeCreature(DOVE, -1,1); // ILLEGAL MOVE breaking 1st legal clause
-
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,0); // ILLEGAL!
         assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -2,1);
+
+        assertEquals(testGameManager.getBoard().size(), 7);
+
+        // no pieces should be placed here, as these were illegally placed
+        assertNull(testGameManager.getCreatureAt(-1,1));
+        assertNull(testGameManager.getCreatureAt(1,0));
+
+        assertTrue(testGameManager.getBoard().get(new Point(-2,1)).getTeam()); // this should be a blue piece
     }
 
+    @Test
+    void testLegalMoveCreature() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
 
+        MoveResponse r;
+        r = testGameManager.placeCreature(BUTTERFLY, 0,0);
+        r = testGameManager.placeCreature(BUTTERFLY, 0,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,0);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,2);
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,-1);
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -2,1);
+
+        r = testGameManager.moveCreature(GRASSHOPPER, -2,1, -1,1);
+
+        assertEquals(MoveResult.OK, r.moveResult());
+        assertEquals(r.message(), "Legal move");
+        assertEquals(testGameManager.getBoard().size(), 7);
+        assertNull(testGameManager.getCreatureAt(-2,1));
+        assertEquals(testGameManager.getCreatureAt(-1,1), GRASSHOPPER);
+
+    }
+
+    @Test
+    void testIllegalMoveCreatures() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
+
+        MoveResponse r;
+        r = testGameManager.placeCreature(BUTTERFLY, 0,0);
+        r = testGameManager.placeCreature(BUTTERFLY, 0,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,0);
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,2);
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,-1);
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,1);
+        r = testGameManager.placeCreature(GRASSHOPPER, -2,1);
+
+        r = testGameManager.moveCreature(BUTTERFLY, -10,1, -2,0); // not a creature!
+        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(r.message(), "Colony is not connected, try again");
+
+        r = testGameManager.moveCreature(GRASSHOPPER, -2,1, -5,0); // too far!
+        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(r.message(), "Colony is not connected, try again");
+
+        r = testGameManager.moveCreature(GRASSHOPPER, -2,1, -3,1); // disconnection!
+        assertEquals(MoveResult.MOVE_ERROR, r.moveResult());
+        assertEquals(r.message(), "Colony is not connected, try again");
+        assertEquals(testGameManager.getBoard().size(), 7);
+        assertNull(testGameManager.getCreatureAt(-3,-1));
+        assertEquals(testGameManager.getCreatureAt(-2,1), GRASSHOPPER);
+
+
+    }
+
+    @Test
+    void testPlaceMoveCombos() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
+
+        MoveResponse r;
+        r = testGameManager.placeCreature(BUTTERFLY, 0,0);
+        r = testGameManager.placeCreature(BUTTERFLY, 0,1);
+        r = testGameManager.moveCreature(BUTTERFLY, 0,0, 0, -1); // illegal disconnection
+
+        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(r.message(), "Colony is not connected, try again");
+        assertEquals(testGameManager.getBoard().size(), 2);
+        assertNull(testGameManager.getCreatureAt(0,-1));
+        assertEquals(testGameManager.getCreatureAt(0,0), BUTTERFLY);
+
+        r = testGameManager.moveCreature(BUTTERFLY, 0,0, -1, 1); // legal move
+
+        assertEquals(r.moveResult(), MoveResult.OK);
+        assertEquals(r.message(), "Legal move");
+
+        r = testGameManager.placeCreature(GRASSHOPPER, 0,0); // illegal placement
+        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+
+        r = testGameManager.placeCreature(GRASSHOPPER, -1,2); // illegal placement
+        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+
+        r = testGameManager.placeCreature(GRASSHOPPER, 1,1);
+        assertFalse(testGameManager.getBoard().get(new Point(1,1)).getTeam()); // should be a red dude
+
+    }
+
+    @Test
+    void testButterflyLogic() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
+
+        MoveResponse r;
+        //turn 1
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, 0,0).moveResult(), MoveResult.OK);
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, 0,1).moveResult(), MoveResult.OK);
+        //turn 2
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, -1,0).moveResult(), MoveResult.OK);
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, 1,1).moveResult(), MoveResult.OK);
+        // turn 3
+        assertEquals(testGameManager.moveCreature(GRASSHOPPER, -1,0, -1, 1).moveResult(), MoveResult.OK);
+        assertEquals(testGameManager.moveCreature(GRASSHOPPER, 1,1, 1,0).moveResult(),  MoveResult.OK);
+        // turn 4 (butterfly needs to be placed)
+        // should not be able to place other creature
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, -1,0).moveResult(), MoveResult.MOVE_ERROR);
+        // should not be able to move other creature
+        assertEquals(testGameManager.moveCreature(GRASSHOPPER, -1,1, -1, 0).moveResult(), MoveResult.MOVE_ERROR);
+        // finally places butterfly
+        assertEquals(testGameManager.placeCreature(BUTTERFLY, -2,2).moveResult(), MoveResult.OK);
+        // repeat tests for RED
+        assertEquals(testGameManager.placeCreature(GRASSHOPPER, 1,1).moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(testGameManager.moveCreature(GRASSHOPPER, 1,0, 1, 1).moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(testGameManager.placeCreature(BUTTERFLY, 0,2).moveResult(), MoveResult.OK);
+
+        Point blueButterfly = new Point(-2, 2);
+        Point redButterfly = new Point(0, 2);
+        assertEquals(testGameManager.getButterfly(true), blueButterfly);
+        assertEquals(testGameManager.getButterfly(false), redButterfly);
+    }
 
 }

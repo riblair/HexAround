@@ -8,21 +8,19 @@ import hexaround.required.MoveResponse;
 import hexaround.required.MoveResult;
 
 import java.awt.*;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.*;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
-
-// TODO: Write a check for colony connectedness
-// TODO: Write all of move logic
 
 public class HexAroundGame implements IHexAroundGameManager {
 
     // for keeping track of whose turn it is currently. (Not needed now)
     protected boolean blueTurn;
     protected int turnCounter;
+
+    protected Point blueButterfly;
+    protected Point redButterfly;
 
     // board keeps track of placed pieces with framework <Point, piece>
     protected HashMap<Point, Creature> board;
@@ -48,6 +46,8 @@ public class HexAroundGame implements IHexAroundGameManager {
         this.blueLegalSpaces = new HashMap<>();
         this.blueTurn = true;
         this.turnCounter = 1; // game starts on turn 1 not 0,
+        this.blueButterfly = null;
+        this.redButterfly = null;
     }
 
     /**
@@ -66,6 +66,25 @@ public class HexAroundGame implements IHexAroundGameManager {
             return null;
         }
         return c.getDef().name();
+    }
+
+    // You cannot take a turn (move / place) after turn 4 without the butterfly being placed
+
+    /**
+     *
+     * @return true if both conditions are met (butterfly placed before turn 4)
+     */
+    private boolean butterflyCheck() {
+
+        if(this.turnCounter < 4) {
+            return true;
+        }
+        if(this.blueTurn) {
+            return this.blueButterfly != null;
+        }
+        else {
+            return this.redButterfly != null;
+        }
     }
 
     /**
@@ -127,6 +146,21 @@ public class HexAroundGame implements IHexAroundGameManager {
         neighbors.add(new Point(p.x-1, p.y+1));
         neighbors.add(new Point(p.x-1, p.y));
         return neighbors;
+    }
+
+    private boolean isButterflySurrounded(boolean blue) {
+        Point p = blue ? this.blueButterfly : this.redButterfly;
+
+        Collection<Point> neighbors = this.getNeighbors(p);
+        int numOccupied = 0;
+
+        for(Point n : neighbors) {
+            if(this.isOccupied(n.x, n.y)) numOccupied++;
+        }
+
+        System.out.printf("Surrounding cells: %d\n", numOccupied);
+        return numOccupied == 6;
+
     }
 
     /**
@@ -197,8 +231,8 @@ public class HexAroundGame implements IHexAroundGameManager {
 
         if(this.blueTurn && this.turnCounter == 1) this.redLegalSpaces = this.blueLegalSpaces;
         // for debugging. implement debug flag?
-        System.out.println("blueLegalSpaces: " + this.blueLegalSpaces.keySet());
-        System.out.println("redLegalSpaces: " + this.redLegalSpaces.keySet());
+//        System.out.println("blueLegalSpaces: " + this.blueLegalSpaces.keySet());
+//        System.out.println("redLegalSpaces: " + this.redLegalSpaces.keySet());
 
     }
 
@@ -216,7 +250,29 @@ public class HexAroundGame implements IHexAroundGameManager {
         * if visited.size == board.size, return true, else return false
         * */
 
-        return false;
+        LinkedList<Point> occupied_Neighbors = new LinkedList<>();
+        Set<Point> visited = new HashSet<>();
+
+        Set<Point> keySet = this.board.keySet();
+
+        // Ugly way to get an element from the hashset, but that's java...
+        for(Point key : keySet) {
+            occupied_Neighbors.add(key);
+            break;
+        }
+        Point curKey;
+        Collection<Point> neighbors;
+        while(!occupied_Neighbors.isEmpty()) {
+            curKey = occupied_Neighbors.pop();
+            visited.add(curKey);
+            neighbors = this.getNeighbors(curKey);
+            for( Point neighbor : neighbors) {
+                if(this.isOccupied(neighbor.x, neighbor.y) && !visited.contains(neighbor)) {
+                    occupied_Neighbors.add(neighbor);
+                }
+            }
+        }
+        return visited.size() == this.board.size();
     }
 
     private void handleChangeTurn() {
@@ -235,6 +291,11 @@ public class HexAroundGame implements IHexAroundGameManager {
      * @param y
      * @return a response, or null. It is not going to be checked.
      */
+
+    /* TODO:
+     *  Check for Butterfly after turn 4
+     */
+
     @Override
     public MoveResponse placeCreature(CreatureName creature, int x, int y) {
         Point p = new Point(x,y);
@@ -243,6 +304,8 @@ public class HexAroundGame implements IHexAroundGameManager {
         boolean legalCheck1;
         boolean legalCheck2;
         boolean legalCheck3 = true;
+        boolean legalCheck4;
+        boolean legalCheck5;
 
         // make sure creature is valid for game config
         legalCheck1 = this.definitions.containsKey(creature);
@@ -253,15 +316,22 @@ public class HexAroundGame implements IHexAroundGameManager {
         // the only case where we ignore legalSpace Map is when its blues first turn, as any placement is valid
         legalCheck2 |= ((this.turnCounter < 2)  && this.blueTurn);
 
-        // Here is where we check for butterfly b4 turn 4.
-        // legalCheck3 = ...
+        // if butterfly not placed by turn 4, and they are trying to place it this turn, legalCheck4 == true
 
-        if(!legalCheck1 || !legalCheck2 || !legalCheck3) {
+        legalCheck4 = this.butterflyCheck() || creature.equals(CreatureName.BUTTERFLY);
+
+        // if butterfly is already placed however, legalCheck5 == false
+        if(blueTurn) legalCheck5 = !(creature.equals(CreatureName.BUTTERFLY) && (this.blueButterfly != null));
+        else legalCheck5 = !(creature.equals(CreatureName.BUTTERFLY) && (this.redButterfly != null));
+
+        if(!legalCheck1 || !legalCheck2 || !legalCheck3 || !legalCheck4 || !legalCheck5) {
             System.out.printf("""
                     Legal1: %b
                     Legal2: %b
                     Legal3: %b
-                    """, legalCheck1, legalCheck2, legalCheck3);
+                    Legal4: %b
+                    Legal5: %b
+                    """, legalCheck1, legalCheck2, legalCheck3, legalCheck4, legalCheck5);
 
             response = new MoveResponse(MoveResult.MOVE_ERROR, "Illegal Placement; invalid creature or position!");
         }
@@ -269,11 +339,18 @@ public class HexAroundGame implements IHexAroundGameManager {
             Creature creature_to_place = new Creature(this.blueTurn, this.definitions.get(creature));
 
             board.put(p, creature_to_place);
-            this.updateLegalMoves();
 
+            if(creature_to_place.getDef().name().equals(CreatureName.BUTTERFLY)) {
+                if(this.blueTurn) this.blueButterfly = p;
+                else this.redButterfly = p;
+            }
+
+            this.updateLegalMoves();
             this.handleChangeTurn();
 
             response = new MoveResponse(MoveResult.OK, "Legal move");
+
+
 
             // by definition of a legal placement, checking if the colony is connected is not necessary.
 
@@ -293,18 +370,73 @@ public class HexAroundGame implements IHexAroundGameManager {
      * @param toY
      * @return
      */
+
+
     @Override
     public MoveResponse moveCreature(CreatureName creature, int fromX, int fromY, int toX, int toY) {
 
         //check if a piece with given name is at given from location
-        //check if to square is occupied (FOR NOW THIS IS A GOOD CHECK)
         //check if distance from/to > maxDist,
-        //move piece on copy board
+        //move piece on board
         // check for connectivity
         // if ANY of these checks fail, return move_error with string
         // otherwise, return OK and update actual board
 
-        // TODO: Write this, update doc
-        return null;
+        // checks for later impl.
+        // correct color moving piece,
+        // logic for unoccupied toP / capturing / definitions
+        // moving on non-empty board
+        // check for end game
+
+        MoveResponse mr;
+        Point fromP = new Point(fromX, fromY);
+        Point toP = new Point(toX, toY);
+        Creature c = this.board.get(fromP);
+
+        // if its turn 4 and they are trying to move a creature w/out butterfly placed, we throw an invalid move response
+        boolean legalCheck1 = this.butterflyCheck();
+        boolean legalCheck2 = c != null;
+
+
+        if(!legalCheck1 || !legalCheck2) {
+            System.out.printf("""
+                    Legal1: %b
+                    Legal2: %b
+                    """, legalCheck1, legalCheck2);
+            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
+            return mr;
+        }
+
+        boolean legalCheck3 = c.getDef().name().toString().equals(creature.toString());
+        System.out.printf("c.name() : %s, creature.name() : %s \n", c.getDef().name().toString(), creature.toString());
+
+        // rework actual moving section to handle different types of movements (walking, flying)
+
+        boolean legalCheck4 = c.getDef().maxDistance() >= this.getDistance(fromX, fromY, toX, toY);
+
+        if(!legalCheck3 || !legalCheck4) {
+            System.out.printf("""
+                    Legal3: %b
+                    Legal4: %b
+                    """, legalCheck3, legalCheck4);
+            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
+            return mr;
+        }
+
+        this.board.remove(fromP);
+        this.board.put(toP, c);
+
+        if(this.isBoardConnected()) {
+            mr = new MoveResponse(MoveResult.OK, "Legal move");
+            this.updateLegalMoves();
+            this.handleChangeTurn();
+        }
+        else {
+            // remove the piece from the new spot, and put him back in the old position
+            this.board.remove(toP);
+            this.board.put(fromP, c);
+            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
+        }
+        return mr;
     }
 }

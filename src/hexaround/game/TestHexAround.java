@@ -32,4 +32,8 @@ public class TestHexAround extends HexAroundGame {
         return this.definitions;
     }
 
+    public Point getButterfly(boolean bteam) {
+        return bteam ? this.blueButterfly : this.redButterfly;
+    }
+
 }

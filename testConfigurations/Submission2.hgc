@@ -1,0 +1,15 @@
+CREATURES:
+	butterfly 1 [walking queen]
+	turtle 3 [walking]
+	dove 5 [flying]
+
+PLAYERS:
+	BLUE
+		butterfly 1,
+		turtle 4,
+		dove 3
+
+	RED
+		butterfly 1,
+		turtle 3,
+		dove 4

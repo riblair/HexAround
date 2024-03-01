@@ -70,17 +70,6 @@ public class HexAroundGame implements IHexAroundGameManager {
         }
     }
 
-    /**
-     * Given the x and y-coordinate of a hex, determine if there is a
-     * piece on that hex on the board.
-     * @param x
-     * @param y
-     * @return true if there is a piece on the hex, false otherwise.
-     */
-
-    public boolean isOccupied(int x, int y) {
-        return this.board.getCreatureAt(new Point(x,y)) != null;
-    }
 
     private boolean isButterflySurrounded(boolean blue) {
         Point p = blue ? this.blueButterfly : this.redButterfly;
@@ -89,7 +78,7 @@ public class HexAroundGame implements IHexAroundGameManager {
         int numOccupied = 0;
 
         for(Point n : neighbors) {
-            if(this.isOccupied(n.x, n.y)) numOccupied++;
+            if(this.board.isOccupied(n)) numOccupied++;
         }
 
         System.out.printf("Surrounding cells: %d\n", numOccupied);
@@ -119,7 +108,7 @@ public class HexAroundGame implements IHexAroundGameManager {
             Collection<Point> neighbors = this.board.getNeighbors(occupiedSquare);
             Creature c = this.board.get(occupiedSquare);
             for(Point neighbor : neighbors) {
-                if(!this.isOccupied(neighbor.x,neighbor.y) && this.board.enemyAdjacency(c.getTeam(), neighbor)) {
+                if(!this.board.isOccupied(neighbor) && this.board.enemyAdjacency(c.getTeam(), neighbor)) {
                         if(c.getTeam()) this.blueLegalSpaces.put(neighbor,neighbor);
                         else this.redLegalSpaces.put(neighbor, neighbor);
                     }
@@ -131,45 +120,6 @@ public class HexAroundGame implements IHexAroundGameManager {
 //        System.out.println("blueLegalSpaces: " + this.blueLegalSpaces.keySet());
 //        System.out.println("redLegalSpaces: " + this.redLegalSpaces.keySet());
 
-    }
-
-    public boolean isBoardConnected() {
-        /* Graph search:
-        * things to keep track of -> Occupied_neighbors (search queue), visited (Points)
-        * start at any of the points,
-        *
-        * while occupied_Neighbors not empty
-        *   pop of queue, add to visited,
-        *   for all neighbors:
-        *       if occupied by unvisited node:
-        *           add to queue
-        *
-        * if visited.size == board.size, return true, else return false
-        * */
-
-        LinkedList<Point> occupied_Neighbors = new LinkedList<>();
-        Set<Point> visited = new HashSet<>();
-
-        Set<Point> keySet = this.board.getBoard().keySet();
-
-        // Ugly way to get an element from the hashset, but that's java...
-        for(Point key : keySet) {
-            occupied_Neighbors.add(key);
-            break;
-        }
-        Point curKey;
-        Collection<Point> neighbors;
-        while(!occupied_Neighbors.isEmpty()) {
-            curKey = occupied_Neighbors.pop();
-            visited.add(curKey);
-            neighbors = this.board.getNeighbors(curKey);
-            for( Point neighbor : neighbors) {
-                if(this.isOccupied(neighbor.x, neighbor.y) && !visited.contains(neighbor)) {
-                    occupied_Neighbors.add(neighbor);
-                }
-            }
-        }
-        return visited.size() == this.board.size();
     }
 
     private void handleChangeTurn() {
@@ -207,6 +157,8 @@ public class HexAroundGame implements IHexAroundGameManager {
         if(this.blueTurn) legalCheck2 = this.blueLegalSpaces.containsKey(p);
         else              legalCheck2 = this.redLegalSpaces.containsKey(p);
 
+//        System.out.printf("Its turn %d\n", this.turnCounter);
+
         // the only case where we ignore legalSpace Map is when its blues first turn, as any placement is valid
         legalCheck2 |= ((this.turnCounter < 2)  && this.blueTurn);
 
@@ -243,6 +195,8 @@ public class HexAroundGame implements IHexAroundGameManager {
             this.handleChangeTurn();
 
             response = new MoveResponse(MoveResult.OK, "Legal move");
+
+//            this.checkGameOver();
 
 
 
@@ -305,14 +259,6 @@ public class HexAroundGame implements IHexAroundGameManager {
         boolean legalCheck3 = c.getDef().name().toString().equals(creature.toString());
         boolean legalCheck4 = c.getTeam() == this.blueTurn;
 
-
-//        System.out.printf("c.name() : %s, creature.name() : %s \n", c.getDef().name().toString(), creature.toString());
-
-        // rework actual moving section to handle different types of movements (walking, flying)
-
-//        boolean legalCheck4 = c.getDef().maxDistance() >= this.getDistance(fromX, fromY, toX, toY);
-        // is the correct teams piece being moved
-
         if(!legalCheck3 || !legalCheck4) {
             System.out.printf("""
                     Legal3: %b
@@ -322,58 +268,23 @@ public class HexAroundGame implements IHexAroundGameManager {
             return mr;
         }
 
-        // handle movement based on attributes (for now, only the movement type attributes)
-
         CreatureDefinition definition = c.getDef();
-        MoveHandler moveHandler;
+        MoveHandler moveHandler = MoveHandler.createMoveHandler(definition);
+        moveHandler.initMoveHandler(this.blueTurn, this.board.copyBoard(), c, fromP, toP);
 
-//        switch ((CreatureProperty)definition.properties().toArray()[0]) {
-//            case QUEEN:
-//                moveHandler = new WalkHandler(this.blueTurn, this.board.copy(), c, fromP, toP);
-//                break;
-//            case WALKING:
-//
-//                break;
-//            case RUNNING:
-//                System.out.println("UNSUPPORTED CASE [RUNNING]!");
-//                break;
-//            case FLYING:
-//                break;
-//            case JUMPING:
-//                System.out.println("UNSUPPORTED CASE [JUMPING]!");
-//                break;
-//            case INTRUDING:
-//                System.out.println("UNSUPPORTED CASE [INTRUDING]!");
-//                break;
-//            case TRAPPING:
-//                System.out.println("UNSUPPORTED CASE [TRAPPING]!");
-//                break;
-//            case SWAPPING:
-//                System.out.println("UNSUPPORTED CASE [SWAPPING]!");
-//                break;
-//            case KAMIKAZE:
-//                System.out.println("UNSUPPORTED CASE [KAMIKAZE]!");
-//                break;
-//            case HATCHING:
-//                System.out.println("UNSUPPORTED CASE [HATCHING]!");
-//                break;
-//
-//
-//        }
-
-
-        this.board.remove(fromP);
-        this.board.put(toP, c);
-
-        if(this.isBoardConnected()) {
+        if(moveHandler.checkLegality()) {
             mr = new MoveResponse(MoveResult.OK, "Legal move");
+            this.board.setBoard(moveHandler.getMoveResult());
+//            System.out.println(this.board.getBoard());
             this.updateLegalMoves();
             this.handleChangeTurn();
+
+            // check for game status?
         }
         else {
             // remove the piece from the new spot, and put him back in the old position
-            this.board.remove(toP);
-            this.board.put(fromP, c);
+//            this.board.remove(toP);
+//            this.board.put(fromP, c);
             mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
         }
         return mr;

@@ -22,4 +22,11 @@ public class Creature {
     public CreatureDefinition getDef() {
         return this.creatureDef;
     }
+
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+
+        Creature cCopy = new Creature(this.blueTeam, this.creatureDef);
+        return cCopy;
+    }
 }

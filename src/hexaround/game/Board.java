@@ -5,9 +5,8 @@ import hexaround.required.CreatureName;
 import hexaround.required.CreatureProperty;
 
 import java.awt.*;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
+import java.io.IOException;
+import java.util.*;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
@@ -21,6 +20,61 @@ public class Board {
         this.boardMap = boardMap;
     }
 
+    public void setBoard(HashMap<Point, Creature> boardMap) {
+        this.boardMap = boardMap;
+    }
+
+    public boolean isBoardConnected() {
+        /* Graph search:
+         * things to keep track of -> Occupied_neighbors (search queue), visited (Points)
+         * start at any of the points,
+         *
+         * while occupied_Neighbors not empty
+         *   pop of queue, add to visited,
+         *   for all neighbors:
+         *       if occupied by unvisited node:
+         *           add to queue
+         *
+         * if visited.size == board.size, return true, else return false
+         * */
+        LinkedList<Point> occupied_Neighbors = new LinkedList<>();
+        Set<Point> visited = new HashSet<>();
+
+        Set<Point> keySet = this.getBoard().keySet();
+
+        // Ugly way to get an element from the hashset, but that's java...
+        for(Point key : keySet) {
+            occupied_Neighbors.add(key);
+            break;
+        }
+        Point curKey;
+        Collection<Point> neighbors;
+        while(!occupied_Neighbors.isEmpty()) {
+            curKey = occupied_Neighbors.pop();
+            visited.add(curKey);
+            neighbors = this.getNeighbors(curKey);
+            for( Point neighbor : neighbors) {
+                if(this.isOccupied(neighbor.x, neighbor.y) && !visited.contains(neighbor)) {
+                    occupied_Neighbors.add(neighbor);
+                }
+            }
+        }
+        return visited.size() == this.boardMap.size();
+    }
+
+    /**
+     * Given the x and y-coordinate of a hex, determine if there is a
+     * piece on that hex on the board.
+     * @param x
+     * @param y
+     * @return true if there is a piece on the hex, false otherwise.
+     */
+
+    public boolean isOccupied(int x, int y) {
+        return this.getCreatureAt(new Point(x,y)) != null;
+    }
+    public boolean isOccupied(Point p) {return this.getCreatureAt(p) != null;}
+
     /**
      * Given the x and y-coordinates for a hex, return the name
      * of the creature on that coordinate.
@@ -29,15 +83,10 @@ public class Board {
      *  is no creature.
      */
 
-    public Creature getCreatureAt(Point p) {
-        // There will be some container that has key as point, and value of creature
-        // access container and see if something is there
-        return this.boardMap.get(p);
-    }
-
-    public Creature getCreatureAt(int x, int y) {
-        return this.getCreatureAt(new Point(x,y));
-    }
+    public Creature getCreatureAt(Point p) { return this.boardMap.get(p); }
+    // There will be some container that has key as point, and value of creature
+    // access container and see if something is there
+    public Creature getCreatureAt(int x, int y) { return this.getCreatureAt(new Point(x,y));}
 
     /**
      * Determine if the creature at the x and y-coordinates has the specified
@@ -61,9 +110,7 @@ public class Board {
         return false;
     }
 
-    public boolean hasProperty(int x, int y, CreatureProperty property) {
-        return this.hasProperty(new Point(x,y), property);
-    }
+    public boolean hasProperty(int x, int y, CreatureProperty property) { return this.hasProperty(new Point(x,y), property);}
 
     /**
      * Given the coordinates for two hexes, (x1, y1) and (x2, y2),
@@ -116,6 +163,34 @@ public class Board {
         return neighbors;
     }
 
+    public boolean isWalkable(Point fromP, Point toP) {
+        if(this.isOccupied(toP)) return false;
+
+        // for draggability, there must be at least one adjacent cell next to both fromP and toP to drag
+        // this problem can be solved mathematically, but this works for the purpose of this assigment. (AGILE!)
+        Collection<Point> fN = this.getNeighbors(fromP);
+        Collection<Point> tN = this.getNeighbors(toP);
+
+        Collection<Point> shared = new LinkedList<>();
+
+        for(Point p : fN) {
+            for(Point p2 : tN) {
+                if(p.equals(p2)) {
+                    shared.add(p);
+                }
+            }
+        }
+
+        if(shared.size() > 2) {
+            System.out.println("Something went wrong! [186 Board]");
+        }
+        int freeNeighbors = 0;
+        for(Point s : shared) {
+            if (!this.isOccupied(s)) freeNeighbors++;
+        }
+        return freeNeighbors > 0;
+    }
+
     // Returns true if no enemy creatures are adjacent, else return false
     public boolean enemyAdjacency(boolean blue, Point unoccupiedPoint) {
         Collection<Point> neighbors = this.getNeighbors(unoccupiedPoint);
@@ -132,8 +207,19 @@ public class Board {
     }
 
     //creates a deep copy of the current hashmap
-    public HashMap<Point, Creature> copy() {
-        return this.boardMap; // TODO: make a deep copy
+    public Board copyBoard() {
+        HashMap<Point, Creature> bCopy = new HashMap<>();
+        Set<Point> keySet = this.boardMap.keySet();
+
+        for(Point p: keySet) {
+            try {
+                    bCopy.put((Point) p.clone(), (Creature) this.boardMap.get(p).clone());
+            }
+            catch(CloneNotSupportedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return new Board(bCopy);
     }
 
     public int size() {

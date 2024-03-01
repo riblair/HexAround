@@ -15,6 +15,8 @@ import java.util.HashMap;
 import static hexaround.required.CreatureName.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+// todo: for all tests verify that the movement in them should ACTUALLY legal/illegal
+
 public class Sub2Tests {
     HexAroundGame gameManager;
     TestHexAround testGameManager;
@@ -88,11 +90,11 @@ public class Sub2Tests {
         testGameManager.placeCreature(GRASSHOPPER, 1,0);
         testGameManager.placeCreature(HORSE, -1,1);
 
-        assertTrue(testGameManager.isOccupied(0,0));
-        assertTrue(testGameManager.isOccupied(1,0));
-        assertTrue(testGameManager.isOccupied(-1,1));
+        assertTrue(testGameManager.getBoard().isOccupied(0,0));
+        assertTrue(testGameManager.getBoard().isOccupied(1,0));
+        assertTrue(testGameManager.getBoard().isOccupied(-1,1));
 
-        assertFalse(testGameManager.isOccupied(-2,-2));
+        assertFalse(testGameManager.getBoard().isOccupied(-2,-2));
     }
 
     @Test
@@ -231,7 +233,7 @@ public class Sub2Tests {
 
         r = testGameManager.placeCreature(GRASSHOPPER, -2,1);
 
-        r = testGameManager.moveCreature(GRASSHOPPER, -1,2, -1,1);
+        r = testGameManager.moveCreature(GRASSHOPPER, -1,2, -1,1); // grasshopper movement not supported
 
         assertEquals(MoveResult.OK, r.moveResult());
         assertEquals(r.message(), "Legal move");
@@ -242,7 +244,7 @@ public class Sub2Tests {
     }
 
     @Test
-    void testIllegalMoveCreatures() throws IOException {
+    void testIllegalMoveCreatures() throws IOException { // wont work because movement specifics not implemented
         testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
 
         MoveResponse r;
@@ -281,13 +283,14 @@ public class Sub2Tests {
         r = testGameManager.placeCreature(BUTTERFLY, 0,1);
         r = testGameManager.moveCreature(BUTTERFLY, 0,0, 0, -1); // illegal disconnection
 
-        assertEquals(r.moveResult(), MoveResult.MOVE_ERROR);
+        assertEquals(MoveResult.MOVE_ERROR, r.moveResult());
         assertEquals(r.message(), "Colony is not connected, try again");
+
         assertEquals(testGameManager.getBoard().size(), 2);
         assertNull(testGameManager.getBoard().getCreatureAt(0,-1));
         assertEquals(testGameManager.getBoard().getCreatureAt(0,0).getDef().name(), BUTTERFLY);
 
-        r = testGameManager.moveCreature(BUTTERFLY, 0,0, -1, 1); // legal move
+        r = testGameManager.moveCreature(BUTTERFLY, 0,0, -1, 1);
 
         assertEquals(r.moveResult(), MoveResult.OK);
         assertEquals(r.message(), "Legal move");
@@ -313,9 +316,9 @@ public class Sub2Tests {
         assertEquals(testGameManager.placeCreature(GRASSHOPPER, 0,1).moveResult(), MoveResult.OK);
         //turn 2
         assertEquals(testGameManager.placeCreature(GRASSHOPPER, -1,0).moveResult(), MoveResult.OK);
-        assertEquals(testGameManager.placeCreature(GRASSHOPPER, 1,1).moveResult(), MoveResult.OK);
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(GRASSHOPPER, 1,1).moveResult());
         // turn 3
-        assertEquals(testGameManager.moveCreature(GRASSHOPPER, -1,0, -1, 1).moveResult(), MoveResult.OK);
+        assertEquals(testGameManager.moveCreature(GRASSHOPPER, -1,0, -1, 1).moveResult(), MoveResult.OK); // cannot move grasshopper yet
         assertEquals(testGameManager.moveCreature(GRASSHOPPER, 1,1, 1,0).moveResult(),  MoveResult.OK);
         // turn 4 (butterfly needs to be placed)
         // should not be able to place other creature
@@ -344,6 +347,66 @@ public class Sub2Tests {
         // this moves a creature of the wrong color!
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, 1, -2, 1, -1).moveResult());
 
+    }
+
+    @Test
+    void testIsWalkable() throws IOException {
+        this.setup();
+        // true cases
+        assertTrue(testGameManager.getBoard().isWalkable(new Point(-1,2), new Point(-1, 1)));
+        assertTrue(testGameManager.getBoard().isWalkable(new Point(1,-2), new Point(1, -1)));
+        assertTrue(testGameManager.getBoard().isWalkable(new Point(2,0), new Point(1, 0)));
+        // false cases
+        assertFalse(testGameManager.getBoard().isWalkable(new Point(1,1), new Point(1, 0)));
+        assertFalse(testGameManager.getBoard().isWalkable(new Point(2,0), new Point(1, 1)));
+    }
+    @Test
+    void testFlying() throws IOException {
+        this.setup();
+        // true cases
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE,0,-2,-1,0).moveResult()); // blue legal move
+        assertTrue(testGameManager.getBoard().isOccupied(-1,0));
+        assertFalse(testGameManager.getBoard().isOccupied(0,-2));
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-1,0).moveResult()); // illegal cause occupied (unsure why failing)
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-3,0).moveResult()); // illegal cause too far
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-3,0).moveResult()); // illegal cause too far
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE,0,2,-1,1).moveResult()); // red legal move
+        assertTrue(testGameManager.getBoard().isOccupied(-1,1));
+        assertFalse(testGameManager.getBoard().isOccupied(0,2));
+    }
+
+    //designed to test the case where a flying creature cannot move because it is surrounded
+    @Test
+    void testFlying2() throws IOException {
+        this.setup();
+        // true cases
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(TURTLE, -2, 0).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(TURTLE, 2, -1).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(TURTLE, -2, 1).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE,0,2,-1,1).moveResult()); // red legal move
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE,0,-2,-1,0).moveResult()); // this dove is now surrounded
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(DOVE, 0,2).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,-1,0,0,-2).moveResult()); // this dove cannot move
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,-1,0,1,-1).moveResult()); // this dove cannot move
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(DOVE, 0,-2).moveResult()); // random legal move from blue to confirm working.
+    }
+
+    // tests walkable creatures ability to traverse with both challenging legal moves, and testing edge cases for non-legal moves
+    @Test
+    void testWalking() throws IOException {
+        this.setup();
+        // legal moves
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, -1, -1, 0).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, 2, 0, 2, -2).moveResult());
+
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -1, 3).moveResult()); // out of range
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -2, 1).moveResult()); // disconnection
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, 0, -2, 3).moveResult()); // legal move!
+
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(DOVE, 1,2).moveResult());
+
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, -2, 1, -1).moveResult()); // Not Walkable! (sliding-wise)
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, -2, 1, -3).moveResult()); // disconnection
     }
 
 }

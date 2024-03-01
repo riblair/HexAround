@@ -29,7 +29,6 @@ public abstract class MoveHandler {
     }
 
     // this method assumes each creature has one of Walking, running, flying, jumping as per hexaround.pdf
-    // TODO: Write logic for each move type (start with flying, then walking)
     public static MoveHandler createMoveHandler(CreatureDefinition definition) {
 
         MoveHandler moveHandler = null;

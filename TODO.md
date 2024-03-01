@@ -10,10 +10,13 @@ Add to the following table
 | R3  |  X   |           Restructure package to include Board Class            |
 | R4  |  X   |        Rewrite logic for Move to include MoveHandler(s)         |
 | T2  |  X   |                Write check for slidable movement                |
-| R3  |      | Write support for different movement (walking, flying, jumping) |
-| T3  |      |                  Implement Kamikaze attribute                   |
-| T4  |      |                    Implement game over check                    |
-| R4  |      |             Implement Max Number of Creature stuffy             |                                             |
+| R3  |  X   | Write support for different movement (walking, flying, jumping) |
+| T3  |  X   |               Implement (partial)game over check                |
+| T4  |      |                  Implement Kamikaze attribute                   |
+| R4  |      |             Implement Max Number of Creature stuffy             |      
+| R4  |      |                      full game over check                       |   
+| R4  |      |                                                                 |   
+| R4  |      |                                                                 | 
 
 ## Citations
 

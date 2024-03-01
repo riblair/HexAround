@@ -74,6 +74,10 @@ public class HexAroundGame implements IHexAroundGameManager {
     private boolean isButterflySurrounded(boolean blue) {
         Point p = blue ? this.blueButterfly : this.redButterfly;
 
+        if(p == null) {
+            return false;
+        }
+
         Collection<Point> neighbors = this.board.getNeighbors(p);
         int numOccupied = 0;
 
@@ -81,7 +85,7 @@ public class HexAroundGame implements IHexAroundGameManager {
             if(this.board.isOccupied(n)) numOccupied++;
         }
 
-        System.out.printf("Surrounding cells: %d\n", numOccupied);
+//        System.out.printf("Surrounding cells: %d\n", numOccupied);
         return numOccupied == 6;
 
     }
@@ -196,16 +200,9 @@ public class HexAroundGame implements IHexAroundGameManager {
 
             response = new MoveResponse(MoveResult.OK, "Legal move");
 
-//            this.checkGameOver();
-
-
-
-            // by definition of a legal placement, checking if the colony is connected is not necessary.
-
-            // check for game over (impl. later)
-
+            // check for game over after turn
+            response = this.checkGameOver(response);
         }
-
         return response;
     }
 
@@ -222,19 +219,6 @@ public class HexAroundGame implements IHexAroundGameManager {
 
     @Override
     public MoveResponse moveCreature(CreatureName creature, int fromX, int fromY, int toX, int toY) {
-
-        //check if a piece with given name is at given from location
-        //check if distance from/to > maxDist,
-        //move piece on board
-        // check for connectivity
-        // if ANY of these checks fail, return move_error with string
-        // otherwise, return OK and update actual board
-
-        // checks for later impl.
-        // correct color moving piece,
-        // logic for unoccupied toP / capturing / definitions
-        // moving on non-empty board
-        // check for end game
 
         MoveResponse mr;
         Point fromP = new Point(fromX, fromY);
@@ -268,18 +252,18 @@ public class HexAroundGame implements IHexAroundGameManager {
             return mr;
         }
 
-        CreatureDefinition definition = c.getDef();
-        MoveHandler moveHandler = MoveHandler.createMoveHandler(definition);
+        MoveHandler moveHandler = MoveHandler.createMoveHandler(c.getDef());
         moveHandler.initMoveHandler(this.blueTurn, this.board.copyBoard(), c, fromP, toP);
 
         if(moveHandler.checkLegality()) {
             mr = new MoveResponse(MoveResult.OK, "Legal move");
             this.board.setBoard(moveHandler.getMoveResult());
-//            System.out.println(this.board.getBoard());
             this.updateLegalMoves();
             this.handleChangeTurn();
 
-            // check for game status?
+            // check for game over after turn
+            mr = this.checkGameOver(mr);
+
         }
         else {
             // remove the piece from the new spot, and put him back in the old position
@@ -289,4 +273,33 @@ public class HexAroundGame implements IHexAroundGameManager {
         }
         return mr;
     }
+
+    // if no game-over condition is met, return the same response
+    // else return a game over message with the corresponding team winning / drawing
+    private MoveResponse checkGameOver(MoveResponse mr) {
+
+        MoveResponse winResponse;
+
+        boolean blueWins = this.isButterflySurrounded(false);
+//        boolean blueWins2 = playerCannotPlaceOrMoveCheck(false);
+        boolean redWins = this.isButterflySurrounded(true);
+//        boolean redWins2 = playerCannotPlaceOrMoveCheck(false);
+
+        if(blueWins && redWins) { // tie
+            winResponse = new MoveResponse(MoveResult.DRAW, "The game is tied!");
+        }
+        else if(blueWins) { // blue wins
+            winResponse = new MoveResponse(MoveResult.BLUE_WON, "Blue is the winner!");
+        }
+        else if(redWins) {// red wins
+            winResponse = new MoveResponse(MoveResult.RED_WON, "Red is the winner!");
+        }
+        else { // neither win
+            winResponse = mr;
+        }
+
+        return winResponse;
+    }
+
+
 }

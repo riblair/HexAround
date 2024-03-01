@@ -15,8 +15,6 @@ import java.util.HashMap;
 import static hexaround.required.CreatureName.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-// todo: for all tests verify that the movement in them should ACTUALLY legal/illegal
-
 public class Sub2Tests {
     HexAroundGame gameManager;
     TestHexAround testGameManager;
@@ -290,6 +288,9 @@ public class Sub2Tests {
         assertNull(testGameManager.getBoard().getCreatureAt(0,-1));
         assertEquals(testGameManager.getBoard().getCreatureAt(0,0).getDef().name(), BUTTERFLY);
 
+
+        //cannot move wrong creature
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE, 0, 0,-1, 1).moveResult());
         r = testGameManager.moveCreature(BUTTERFLY, 0,0, -1, 1);
 
         assertEquals(r.moveResult(), MoveResult.OK);
@@ -407,6 +408,61 @@ public class Sub2Tests {
 
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, -2, 1, -1).moveResult()); // Not Walkable! (sliding-wise)
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, -2, 1, -3).moveResult()); // disconnection
+    }
+
+    @Test
+    void testJumping() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager(hgcFile2);
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(BUTTERFLY, 0, 0).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(BUTTERFLY, 0, 1).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(GRASSHOPPER, 0, -1).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(GRASSHOPPER, -1, 2).moveResult());
+
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, 0, -1, -1,1).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, 0, -1, 2,-1).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, 0, -1, 0,3).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, 0, -1, 0,1).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, 0, -1, 1,1).moveResult());
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(GRASSHOPPER, 0, -1, 0,2).moveResult());
+
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, -1, 2, 1,1).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, -1, 2, 1,-1).moveResult());
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(GRASSHOPPER, -1, 2, 0,-1).moveResult());
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(GRASSHOPPER, -1, 2, 1,0).moveResult());
+    }
+
+    @Test
+    void testBlueWinner() throws IOException {
+        this.setup();
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE, 0, -2, -1,1).moveResult());
+        assertEquals(MoveResult.BLUE_WON, testGameManager.moveCreature(TURTLE, 2, 0, 1,0).moveResult());
+    }
+    @Test
+    void testRedWinner() throws IOException {
+        this.setup();
+        // legal moves
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE, 0, -2, -1,0).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, 2, -1,1).moveResult());
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, 1, -2, 1,-1).moveResult());
+        assertEquals(MoveResult.RED_WON, testGameManager.moveCreature(TURTLE, 2, 0, 1,0).moveResult());
+    }
+
+    @Test
+    void testTie() throws IOException {
+        this.setup();
+        // legal moves
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, -1, -1,0).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(DOVE, 1,2).moveResult());
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE, 0, -2, -1,1).moveResult());
+        assertEquals(MoveResult.OK, testGameManager.placeCreature(DOVE, 0,3).moveResult());
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, 1, -2, 1,-1).moveResult());
+        assertEquals(MoveResult.DRAW, testGameManager.moveCreature(TURTLE, 2, 0, 1,0).moveResult());
     }
 
 }

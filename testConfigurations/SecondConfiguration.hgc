@@ -6,6 +6,10 @@ CREATURES:
 	GRASSHOPPER 3 [JUMPING INTRUDING]
 
 PLAYERS:
+	BLUE
+		butterfly 1,
+        grasshopper 5
+
 	RED
 		butterfly 1,
 		grasshopper 5

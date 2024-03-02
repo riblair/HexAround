@@ -43,13 +43,4 @@ public class JumpHandler extends MoveHandler {
         System.out.printf("Jumping Creature LegalChecks [%b, %b, %b, %b]\n", legalCheck1,legalCheck2,legalCheck3, legalCheck4);
         return legalCheck1 && legalCheck2 && legalCheck3 && legalCheck4;
     }
-
-    @Override
-    public HashMap<Point, Creature> getMoveResult() {
-
-        this.boardCopy.remove(this.fromPoint);
-        this.boardCopy.put(this.toPoint, this.creature);
-
-        return this.boardCopy.getBoard();
-    }
 }

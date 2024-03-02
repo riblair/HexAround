@@ -163,8 +163,7 @@ public class Board {
         return neighbors;
     }
 
-    public boolean isWalkable(Point fromP, Point toP) {
-        if(this.isOccupied(toP)) return false;
+    private boolean isSlidable(Point fromP, Point toP) {
 
         // for draggability, there must be at least one adjacent cell next to both fromP and toP to drag
         // this problem can be solved mathematically, but this works for the purpose of this assigment. (AGILE!)
@@ -188,7 +187,17 @@ public class Board {
         for(Point s : shared) {
             if (!this.isOccupied(s)) freeNeighbors++;
         }
+//        System.out.printf("%d\n", freeNeighbors);
         return freeNeighbors > 0;
+    }
+
+    public boolean isWalkable(Creature creature, Point fromP, Point toP, Point goal) {
+
+//        System.out.printf(" [%b, %b]\n",creature.getDef().properties().contains(CreatureProperty.KAMIKAZE), goal.equals(toP));
+        if(creature.getDef().properties().contains(CreatureProperty.KAMIKAZE) && goal.equals(toP)) { // kamikaze attribute
+            return this.isSlidable(fromP, toP);
+        }
+        return !this.isOccupied(toP) && this.isSlidable(fromP, toP); // will change if intruding.
     }
 
     // Returns true if no enemy creatures are adjacent, else return false

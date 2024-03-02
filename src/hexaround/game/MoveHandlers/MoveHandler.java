@@ -58,6 +58,16 @@ public abstract class MoveHandler {
 
     public abstract boolean checkLegality();
 
-    public abstract HashMap<Point, Creature> getMoveResult();
+    public HashMap<Point, Creature> getMoveResult() {
+        this.boardCopy.remove(this.fromPoint);
+
+        if(this.creature.getDef().properties().contains(CreatureProperty.KAMIKAZE)) {
+            this.boardCopy.remove(this.fromPoint);
+        }
+
+        this.boardCopy.put(this.toPoint, this.creature);
+
+        return this.boardCopy.getBoard();
+    }
 
 }

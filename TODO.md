@@ -12,11 +12,12 @@ Add to the following table
 | T2  |  X   |                Write check for slidable movement                |
 | R3  |  X   | Write support for different movement (walking, flying, jumping) |
 | T3  |  X   |               Implement (partial)game over check                |
-| T4  |      |                  Implement Kamikaze attribute                   |
-| R4  |      |             Implement Max Number of Creature stuffy             |      
-| R4  |      |                      full game over check                       |   
-| R4  |      |                                                                 |   
-| R4  |      |                                                                 | 
+| T4  |  X   |             Implement Max Number of Creature stuffy             | 
+| R4  |  X   |                        Implement Running                        |   
+| R4  |  X   |                  Implement Kamikaze attribute                   |
+| R4  |      |                            Swapping                             | 
+| R4  |      |                  Creature Stacking (Intruding)                  | 
+| R4  |      |                      full game over check                       |
 
 ## Citations
 

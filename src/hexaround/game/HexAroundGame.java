@@ -3,21 +3,16 @@ package hexaround.game;
 import hexaround.config.CreatureDefinition;
 import hexaround.config.GameConfiguration;
 import hexaround.game.MoveHandlers.MoveHandler;
-import hexaround.game.MoveHandlers.WalkHandler;
 import hexaround.required.CreatureName;
-import hexaround.required.CreatureProperty;
 import hexaround.required.MoveResponse;
 import hexaround.required.MoveResult;
 
 import java.awt.*;
 import java.util.*;
 
-import static java.lang.Math.abs;
-import static java.lang.Math.max;
-
 public class HexAroundGame implements IHexAroundGameManager {
 
-    // for keeping track of whose turn it is currently. (Not needed now)
+    // for keeping track of whose turn it is currently.
     protected boolean blueTurn;
     protected int turnCounter;
     protected Point blueButterfly;
@@ -26,11 +21,13 @@ public class HexAroundGame implements IHexAroundGameManager {
     // board keeps track of placed pieces with framework <Point, piece>
     protected Board board;
 
-    // legalSpaces keeps track of free spaces for red pieces with framework <Point, Point>
-    protected  HashMap<Point, Point> redLegalSpaces;
-
     // legalSpaces keeps track of free spaces for blue pieces with framework <Point, Point>
     protected HashMap<Point, Point> blueLegalSpaces;
+    protected  HashMap<Point, Point> redLegalSpaces;
+
+    // blue/redCreatures keeps track of currently placed creatures for both sides with the Array representing the max & current amount on the board
+    protected Map<CreatureName, int[]> blueCreatures;
+    protected Map<CreatureName, int[]> redCreatures;
 
     protected HashMap<CreatureName, CreatureDefinition> definitions;
 
@@ -42,6 +39,33 @@ public class HexAroundGame implements IHexAroundGameManager {
         definitions = new HashMap<>();
         config.creatures().forEach( (c) -> definitions.put(c.name(),c)); // adds every Creature Definition to the Map
 
+        config.players().forEach( (pc) ->
+                {
+                    switch (pc.Player()) {
+                        case BLUE -> {
+                            this.blueCreatures = new HashMap<>();
+                            for (CreatureName c : pc.creatures().keySet()) {
+                                int[] maxCur = {pc.creatures().get(c), pc.creatures().get(c)};
+                                this.blueCreatures.put(c, maxCur);
+                            }
+                        }
+                        case RED -> {
+                            this.redCreatures = new HashMap<>();
+                            for (CreatureName c : pc.creatures().keySet()) {
+                                int[] maxCur = {pc.creatures().get(c), pc.creatures().get(c)};
+                                this.redCreatures.put(c, maxCur);
+                            }
+                        }
+                    }
+                }
+        );
+
+        if(this.blueCreatures == null) {
+            this.blueCreatures = this.redCreatures;
+        } else if (this.redCreatures == null) {
+            this.redCreatures = this.blueCreatures;
+        }
+
         this.board = new Board();
         this.redLegalSpaces = new HashMap<>();
         this.blueLegalSpaces = new HashMap<>();
@@ -52,17 +76,16 @@ public class HexAroundGame implements IHexAroundGameManager {
     }
 
     // You cannot take a turn (move / place) after turn 4 without the butterfly being placed
-
     /**
      *
      * @return true if both conditions are met (butterfly placed before turn 4)
      */
-    private boolean butterflyCheck() {
+    private boolean butterflyCheck(boolean team) {
 
         if(this.turnCounter < 4) {
             return true;
         }
-        if(this.blueTurn) {
+        if(team) {
             return this.blueButterfly != null;
         }
         else {
@@ -85,14 +108,11 @@ public class HexAroundGame implements IHexAroundGameManager {
             if(this.board.isOccupied(n)) numOccupied++;
         }
 
-//        System.out.printf("Surrounding cells: %d\n", numOccupied);
         return numOccupied == 6;
-
     }
 
     private void updateLegalMoves() {
 
-        // new methodology:
         // reset the legal moves list
         // for each occupied square in the set
         //      get all neighbors
@@ -102,15 +122,54 @@ public class HexAroundGame implements IHexAroundGameManager {
         //                  if no enemy adjacency
         //                      add to that teams legal move set
 
+        // ALSO NEED TO UPDATE BUTTERFLY HERE
         /* reset both sets */
         this.blueLegalSpaces = new HashMap<>();
         this.redLegalSpaces = new HashMap<>();
 
-        Collection<Point> occupiedSquares = this.board.getBoard().keySet();
+        this.blueButterfly = null;
+        this.redButterfly = null;
 
-        for(Point occupiedSquare: occupiedSquares) {
-            Collection<Point> neighbors = this.board.getNeighbors(occupiedSquare);
+        HashMap<CreatureName, int[]> resetBlueCount = new HashMap<>();
+        HashMap<CreatureName, int[]> resetRedCount = new HashMap<>();
+
+        int[] updated;
+
+        for(CreatureName cn : this.blueCreatures.keySet()) {
+            updated = this.blueCreatures.get(cn);
+            updated[1] = updated[0];
+            resetBlueCount.put(cn, updated);
+        }
+
+        for(CreatureName cn : this.redCreatures.keySet()) {
+            updated = this.redCreatures.get(cn);
+            updated[1] = updated[0];
+            resetRedCount.put(cn, updated);
+        }
+
+        for(Point occupiedSquare: this.board.getBoard().keySet()) {
             Creature c = this.board.get(occupiedSquare);
+
+            if(c.getDef().name().equals(CreatureName.BUTTERFLY)) {
+                if(c.getTeam()) this.blueButterfly = occupiedSquare;
+                else this.redButterfly = occupiedSquare;
+            }
+
+            // updating placed creature count.
+            if(c.getTeam()) {
+                updated = resetBlueCount.get(c.getDef().name());
+                updated[1]--;
+                resetBlueCount.put(c.getDef().name(), updated);
+            }
+            else {
+                updated = resetRedCount.get(c.getDef().name());
+                updated[1]--;
+                resetRedCount.put(c.getDef().name(), updated);
+            }
+
+            // updating legal moves
+            Collection<Point> neighbors = this.board.getNeighbors(occupiedSquare);
+
             for(Point neighbor : neighbors) {
                 if(!this.board.isOccupied(neighbor) && this.board.enemyAdjacency(c.getTeam(), neighbor)) {
                         if(c.getTeam()) this.blueLegalSpaces.put(neighbor,neighbor);
@@ -119,10 +178,25 @@ public class HexAroundGame implements IHexAroundGameManager {
                 }
             }
 
+        // this allows red to place their first piece anywhere adjacent to blues first place
         if(this.blueTurn && this.turnCounter == 1) this.redLegalSpaces = this.blueLegalSpaces;
+
+        this.blueCreatures = resetBlueCount;
+        this.redCreatures = resetRedCount;
+//        System.out.print("Blue Creatures: ");
+//
+//        for (CreatureName cn: this.blueCreatures.keySet()) {
+//            System.out.printf("{ %s, [%d,%d] }, ", cn.toString(), this.blueCreatures.get(cn)[0], this.blueCreatures.get(cn)[1]);
+//        }
+//        System.out.println();
+//        System.out.print("red Creatures: ");
+//        for (CreatureName cn: this.redCreatures.keySet()) {
+//            System.out.printf(" { %s, [%d,%d] }, ", cn.toString(), this.redCreatures.get(cn)[0], this.redCreatures.get(cn)[1]);
+//        }
+//        System.out.println();
         // for debugging. implement debug flag?
-//        System.out.println("blueLegalSpaces: " + this.blueLegalSpaces.keySet());
-//        System.out.println("redLegalSpaces: " + this.redLegalSpaces.keySet());
+        //        System.out.println("blueLegalSpaces: " + this.blueLegalSpaces.keySet());
+        //        System.out.println("redLegalSpaces: " + this.redLegalSpaces.keySet());
 
     }
 
@@ -131,6 +205,21 @@ public class HexAroundGame implements IHexAroundGameManager {
             this.turnCounter++;
         }
         this.blueTurn = !this.blueTurn;
+    }
+
+    private boolean canPlaceCreature(CreatureName creature, boolean bt) {
+        if(!this.definitions.containsKey(creature) || (!this.blueCreatures.containsKey(creature) && bt) || (!this.redCreatures.containsKey(creature) && !bt)) {
+            return false;
+        }
+
+        int placeable = 0;
+        if(bt) {
+            placeable = this.blueCreatures.get(creature)[1];
+        }
+        else {
+            placeable = this.redCreatures.get(creature)[1];
+        }
+        return placeable > 0;
     }
 
     /**
@@ -151,37 +240,32 @@ public class HexAroundGame implements IHexAroundGameManager {
         // check if legal creature, check if legal position, check butterfly cases
         boolean legalCheck1;
         boolean legalCheck2;
-        boolean legalCheck3 = true;
-        boolean legalCheck4;
-        boolean legalCheck5;
+        boolean legalCheck3;
+        boolean legalCheck4 = true; // might now be covered by the first boolean check.
 
-        // make sure creature is valid for game config
-        legalCheck1 = this.definitions.containsKey(creature);
+        legalCheck1 = this.canPlaceCreature(creature, this.blueTurn);
 
         if(this.blueTurn) legalCheck2 = this.blueLegalSpaces.containsKey(p);
         else              legalCheck2 = this.redLegalSpaces.containsKey(p);
 
-//        System.out.printf("Its turn %d\n", this.turnCounter);
-
         // the only case where we ignore legalSpace Map is when its blues first turn, as any placement is valid
         legalCheck2 |= ((this.turnCounter < 2)  && this.blueTurn);
 
-        // if butterfly not placed by turn 4, and they are trying to place it this turn, legalCheck4 == true
+        // if butterfly not placed by turn 4, and they are trying to place it this turn, legalCheck3 == true
 
-        legalCheck4 = this.butterflyCheck() || creature.equals(CreatureName.BUTTERFLY);
+        legalCheck3 = this.butterflyCheck(this.blueTurn) || creature.equals(CreatureName.BUTTERFLY);
 
-        // if butterfly is already placed however, legalCheck5 == false
-        if(blueTurn) legalCheck5 = !(creature.equals(CreatureName.BUTTERFLY) && (this.blueButterfly != null));
-        else legalCheck5 = !(creature.equals(CreatureName.BUTTERFLY) && (this.redButterfly != null));
+        //        // if butterfly is already placed however, legalCheck4 == false
+        //        if(blueTurn) legalCheck4 = !(creature.equals(CreatureName.BUTTERFLY) && (this.blueButterfly != null));
+        //        else legalCheck4 = !(creature.equals(CreatureName.BUTTERFLY) && (this.redButterfly != null));
 
-        if(!legalCheck1 || !legalCheck2 || !legalCheck3 || !legalCheck4 || !legalCheck5) {
+        if(!legalCheck1 || !legalCheck2 || !legalCheck3 || !legalCheck4) {
             System.out.printf("""
                     Legal1: %b
                     Legal2: %b
                     Legal3: %b
                     Legal4: %b
-                    Legal5: %b
-                    """, legalCheck1, legalCheck2, legalCheck3, legalCheck4, legalCheck5);
+                    """, legalCheck1, legalCheck2, legalCheck3, legalCheck4);
 
             response = new MoveResponse(MoveResult.MOVE_ERROR, "Illegal Placement; invalid creature or position!");
         }
@@ -200,7 +284,7 @@ public class HexAroundGame implements IHexAroundGameManager {
 
             response = new MoveResponse(MoveResult.OK, "Legal move");
 
-            // check for game over after turn
+            // check for game over after turn // may need to move this above handle change turn
             response = this.checkGameOver(response);
         }
         return response;
@@ -216,7 +300,6 @@ public class HexAroundGame implements IHexAroundGameManager {
      * @return
      */
 
-
     @Override
     public MoveResponse moveCreature(CreatureName creature, int fromX, int fromY, int toX, int toY) {
 
@@ -228,7 +311,7 @@ public class HexAroundGame implements IHexAroundGameManager {
         /* All checks within this section are used irrespective of attributes */
 
         // if its turn 4 and they are trying to move a creature w/out butterfly placed, we throw an invalid move response
-        boolean legalCheck1 = this.butterflyCheck();
+        boolean legalCheck1 = this.butterflyCheck(this.blueTurn);
         boolean legalCheck2 = c != null;
 
         if(!legalCheck1 || !legalCheck2) {
@@ -236,19 +319,21 @@ public class HexAroundGame implements IHexAroundGameManager {
                     Legal1: %b
                     Legal2: %b
                     """, legalCheck1, legalCheck2);
-            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
+            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Move Error: (Butterfly not placed? Creature not at Square?)");
             return mr;
         }
 
         boolean legalCheck3 = c.getDef().name().toString().equals(creature.toString());
         boolean legalCheck4 = c.getTeam() == this.blueTurn;
+        boolean legalCheck5 = this.board.getDistance(fromP,toP) > 0;
 
-        if(!legalCheck3 || !legalCheck4) {
+        if(!legalCheck3 || !legalCheck4 || !legalCheck5) {
             System.out.printf("""
                     Legal3: %b
                     Legal4: %b
-                    """, legalCheck3, legalCheck4);
-            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
+                    Legal5: %b
+                    """, legalCheck3, legalCheck4, legalCheck5);
+            mr = new MoveResponse(MoveResult.MOVE_ERROR, "Other Move Error (Correct creature called?, Correct Turn/Team?, Distance > 0?)");
             return mr;
         }
 
@@ -261,14 +346,10 @@ public class HexAroundGame implements IHexAroundGameManager {
             this.updateLegalMoves();
             this.handleChangeTurn();
 
-            // check for game over after turn
+            // check for game over after turn // may need to move this above handle change turn
             mr = this.checkGameOver(mr);
-
         }
         else {
-            // remove the piece from the new spot, and put him back in the old position
-//            this.board.remove(toP);
-//            this.board.put(fromP, c);
             mr = new MoveResponse(MoveResult.MOVE_ERROR, "Colony is not connected, try again");
         }
         return mr;
@@ -276,13 +357,16 @@ public class HexAroundGame implements IHexAroundGameManager {
 
     // if no game-over condition is met, return the same response
     // else return a game over message with the corresponding team winning / drawing
+    // ASSUMES THAT THE TURN HAS CHANGED. THIS SHOULD RUN AFTER HandleGameOver()
     private MoveResponse checkGameOver(MoveResponse mr) {
-
         MoveResponse winResponse;
 
         boolean blueWins = this.isButterflySurrounded(false);
 //        boolean blueWins2 = playerCannotPlaceOrMoveCheck(false);
         boolean redWins = this.isButterflySurrounded(true);
+
+        blueWins |= this.butterflyCheck(false) && this.redLegalSpaces.size() == 0 && !this.blueTurn;
+        redWins |= this.butterflyCheck(true) && this.blueLegalSpaces.size() == 0 && this.blueTurn;;
 //        boolean redWins2 = playerCannotPlaceOrMoveCheck(false);
 
         if(blueWins && redWins) { // tie

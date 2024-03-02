@@ -1,6 +1,7 @@
 package hexaround.game.MoveHandlers;
 
 import hexaround.game.Creature;
+import hexaround.required.CreatureProperty;
 
 import java.awt.*;
 import java.util.Collection;
@@ -27,7 +28,15 @@ public class FlyHandler extends MoveHandler {
         boolean legalCheck4;
 
         legalCheck1 = this.creature.getDef().maxDistance() >= this.boardCopy.getDistance(this.fromPoint, this.toPoint);
-        legalCheck4 = !this.boardCopy.isOccupied(this.toPoint);
+
+        if(creature.getDef().properties().contains(CreatureProperty.KAMIKAZE)) {
+            legalCheck4 = true;
+        }
+        else {
+            legalCheck4 = !this.boardCopy.isOccupied(this.toPoint);
+        }
+
+
 
         Collection<Point> neighbors = this.boardCopy.getNeighbors(this.fromPoint);
         int numTouching = 0;
@@ -48,14 +57,5 @@ public class FlyHandler extends MoveHandler {
 
         System.out.printf("Flying Creature LegalChecks [%b, %b, %b, %b]\n", legalCheck1,legalCheck2,legalCheck3, legalCheck4);
         return legalCheck1 && legalCheck2 && legalCheck3 && legalCheck4;
-    }
-
-    @Override
-    public HashMap<Point, Creature> getMoveResult() {
-        // abstract this process later to account for different traits.
-        this.boardCopy.remove(this.fromPoint);
-        this.boardCopy.put(this.toPoint, this.creature);
-
-        return this.boardCopy.getBoard();
     }
 }

@@ -15,7 +15,7 @@
 
 package hexaround.game;
 
-import hexaround.required.*;
+import hexaround.EnumsAndDefinitions.*;
 
 /**
  * This interface describes the behavior of HexAround from the client's viewpoint.

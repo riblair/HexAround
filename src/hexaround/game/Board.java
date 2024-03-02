@@ -1,15 +1,17 @@
 package hexaround.game;
 
 import hexaround.config.CreatureDefinition;
-import hexaround.required.CreatureName;
-import hexaround.required.CreatureProperty;
+import hexaround.EnumsAndDefinitions.CreatureProperty;
 
 import java.awt.*;
-import java.io.IOException;
 import java.util.*;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
+
+/*
+* This class handles all interactions with the board including adding / removing pieces, coordinate based methods (neighbors, getDistance)
+* */
 
 public class Board {
     private HashMap<Point, Creature> boardMap;
@@ -42,7 +44,6 @@ public class Board {
 
         Set<Point> keySet = this.getBoard().keySet();
 
-        // Ugly way to get an element from the hashset, but that's java...
         for(Point key : keySet) {
             occupied_Neighbors.add(key);
             break;
@@ -69,7 +70,6 @@ public class Board {
      * @param y
      * @return true if there is a piece on the hex, false otherwise.
      */
-
     public boolean isOccupied(int x, int y) {
         return this.getCreatureAt(new Point(x,y)) != null;
     }
@@ -84,8 +84,6 @@ public class Board {
      */
 
     public Creature getCreatureAt(Point p) { return this.boardMap.get(p); }
-    // There will be some container that has key as point, and value of creature
-    // access container and see if something is there
     public Creature getCreatureAt(int x, int y) { return this.getCreatureAt(new Point(x,y));}
 
     /**
@@ -163,10 +161,14 @@ public class Board {
         return neighbors;
     }
 
+    // for draggability/sliding, there must be at least one adjacent cell next to both fromP and toP to drag "through"
     private boolean isSlidable(Point fromP, Point toP) {
-
-        // for draggability, there must be at least one adjacent cell next to both fromP and toP to drag
-        // this problem can be solved mathematically, but this works for the purpose of this assigment. (AGILE!)
+        /*
+        * Algorithm:
+        * Find common elements between two sets
+        * Count free neighbors
+        * If at least 1 free neighbor, then the piece is draggable
+        * */
         Collection<Point> fN = this.getNeighbors(fromP);
         Collection<Point> tN = this.getNeighbors(toP);
 
@@ -180,27 +182,32 @@ public class Board {
             }
         }
 
-        if(shared.size() > 2) {
-            System.out.println("Something went wrong! [186 Board]");
-        }
         int freeNeighbors = 0;
         for(Point s : shared) {
             if (!this.isOccupied(s)) freeNeighbors++;
         }
-//        System.out.printf("%d\n", freeNeighbors);
         return freeNeighbors > 0;
     }
 
+    /*
+    * Walkable:
+    * A hex is walkable if it is slidable and - barring any properties - the hex is unoccupied
+    * */
     public boolean isWalkable(Creature creature, Point fromP, Point toP, Point goal) {
 
-//        System.out.printf(" [%b, %b]\n",creature.getDef().properties().contains(CreatureProperty.KAMIKAZE), goal.equals(toP));
-        if(creature.getDef().properties().contains(CreatureProperty.KAMIKAZE) && goal.equals(toP)) { // kamikaze attribute
+        if((creature.getDef().properties().contains(CreatureProperty.KAMIKAZE) || creature.getDef().properties().contains(CreatureProperty.SWAPPING))
+                && goal.equals(toP)) { // kamikaze/swapping attribute
             return this.isSlidable(fromP, toP);
         }
         return !this.isOccupied(toP) && this.isSlidable(fromP, toP); // will change if intruding.
     }
 
-    // Returns true if no enemy creatures are adjacent, else return false
+    /**
+     *
+     * @param blue - Which team creature to compare against (BLUE team is TRUE, Red team is false)
+     * @param unoccupiedPoint - Point with
+     * @return - true iff no creature of the enemy team is adjacent to the unoccupied square
+     */
     public boolean enemyAdjacency(boolean blue, Point unoccupiedPoint) {
         Collection<Point> neighbors = this.getNeighbors(unoccupiedPoint);
         Creature subNCreature;

@@ -1,8 +1,5 @@
 package hexaround.game.MoveHandlers;
 
-import hexaround.game.Creature;
-import hexaround.required.CreatureProperty;
-
 import java.awt.*;
 import java.util.*;
 
@@ -14,28 +11,26 @@ public class WalkHandler extends MoveHandler {
     @Override
     public boolean checkLegality() {
 
-        // walking needs to keep connectedness at each step, and must be "draggable"
-        // strategy: A-star search!
-        // keep a collection of visited cells, we cannot revisit a visited cell, priority queue for handling potential moves
-        // at each step, we keep track of the following:
-        //      where the piece is, where it will attempt to go, how much movement it has left.
-        //      heuristic is distance left to goal.
-        // we add another potential move if the following are true
-        //      cell is walkable (board method)
-        //      we have not already visited this cell.
-        //      the distance at the attempted place to goal is smaller than the remaining movement.
-        //      the colony is not disconnected as a result of this move
-        // for each potential move, we are placing the creature at its attempted spot for continuity checking, and then removing it.
         if(this.creature.getDef().maxDistance() < this.boardCopy.getDistance(this.fromPoint,this.toPoint)) {
             return false;
         }
+
+        // walking needs to keep connectedness at each step, and must be "draggable"
+        // strategy: breadth-first-search search!
+        // keep a collection of visited cells, we cannot revisit a visited cell, priority queue for handling potential moves
+        // at each step, we keep track of the following:
+        //      where the piece is, where it will attempt to go, how much movement it has left.
+        // we add another potential move if the following are true
+        //      cell is walkable (board method)
+        //      we have not already visited this cell.
+        //      the colony is not disconnected as a result of this move
+        // for each potential move, we are placing the creature at its attempted spot for continuity checking, and then removing it.
 
         Set<Point> visited = new HashSet<>();
         LinkedList<MoveHelper> movementQueue = new LinkedList<>();
 
         Collection<Point> neighbors = this.boardCopy.getNeighbors(this.fromPoint);
 
-        // this is only checking for unoccupied cells, the while loop for each potential move handles the rest
         for(Point p : neighbors) {
             movementQueue.add(new MoveHelper(this.fromPoint, p, this.creature.getDef().maxDistance()));
         }
@@ -47,7 +42,6 @@ public class WalkHandler extends MoveHandler {
 
         while(!movementQueue.isEmpty()) {
             current = movementQueue.pop();
-//            System.out.printf("fromP: (%d,%d), toP: (%d,%d), stepsLeft: %d\n", current.fromP.x, current.fromP.y, current.toP.x,current.toP.y, current.stepsLeft);
             visited.add(current.fromP);
             boolean previousOcc = this.boardCopy.isOccupied(current.toP);
             if(!previousOcc) {
@@ -79,9 +73,6 @@ public class WalkHandler extends MoveHandler {
                     if (!this.boardCopy.isOccupied(p) && !visited.contains(p) || p.equals(this.toPoint))
                         movementQueue.add(new MoveHelper(current.toP, p, current.stepsLeft - 1));
                 }
-            }
-            else {
-//                System.out.printf("Walking Creature LegalChecks [%b, %b, %b, %b]\n", legalCheck1,legalCheck2,legalCheck3, legalCheck4);
             }
         }
         return false;

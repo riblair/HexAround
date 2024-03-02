@@ -1,0 +1,16 @@
+/* Test HexAround Game Configuration (.hgc) file */
+
+CREATURES:
+	butterfly [walking queen]
+	grasshopper 3 [jumping swapping]
+	crab 2 [walking swapping]
+	dove 5 [flying swapping]
+	horse 4 [jumping kamikaze]
+
+PLAYERS:
+	BLUE
+		butterfly 1,
+		grasshopper 5,
+		horse 3,
+		dove 3,
+		crab 4

@@ -7,24 +7,23 @@ Add to the following table
 | T1  |  X   |            Create check for butterfly before turn 5             |
 | R1  |  X   |                  Rewrote logic for legalMoves                   |
 | T2  |  X   |                 Write tests for butterfly logic                 |
-| R3  |  X   |           Restructure package to include Board Class            |
-| R4  |  X   |        Rewrite logic for Move to include MoveHandler(s)         |
+| R2  |  X   |           Restructure package to include Board Class            |
+| R3  |  X   |        Rewrite logic for Move to include MoveHandler(s)         |
 | T2  |  X   |                Write check for slidable movement                |
-| R3  |  X   | Write support for different movement (walking, flying, jumping) |
-| T3  |  X   |               Implement (partial)game over check                |
-| T4  |  X   |             Implement Max Number of Creature stuffy             | 
-| R4  |  X   |                        Implement Running                        |   
-| R4  |  X   |                  Implement Kamikaze attribute                   |
-| R4  |      |                            Swapping                             | 
-| R4  |      |                  Creature Stacking (Intruding)                  | 
-| R4  |      |                      full game over check                       |
+| R4  |  X   | Write support for different movement (walking, flying, jumping) |
+| R5  |  X   |               Implement (partial)game over check                |
+| R6  |  X   |             Implement Max Number of Creature stuffy             | 
+| R7  |  X   |                       Implemented Running                       |   
+| R8  |  X   |                 Implemented Kamikaze attribute                  |
+| R9  |  X   |                      Implemented Swapping                       |
 
 ## Citations
 
-Put citations to any code snippets you used in your implementation and
-where you found it.
+No Citations
 
 ## Design Patterns Used
+
+I created the Board method to handle all of the logic of hexes, getting/setting, and methods not related to the state of the game itself. 
 
 MoveHandler has a static method "createMoveHandler" that acts as a factory method. 
 MoveHandler is an abstract class that represents the core functionality of handling a move action. 

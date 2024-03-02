@@ -12,7 +12,7 @@
 package project;
 
 import hexaround.game.*;
-import hexaround.required.*;
+import hexaround.EnumsAndDefinitions.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.*;
 import org.junit.jupiter.params.provider.*;

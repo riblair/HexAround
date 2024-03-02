@@ -1,7 +1,7 @@
 package hexaround.game;
 
 import hexaround.config.CreatureDefinition;
-import hexaround.required.CreatureName;
+import hexaround.EnumsAndDefinitions.CreatureName;
 
 import java.awt.*;
 import java.util.HashMap;

@@ -2,17 +2,17 @@ package hexaround;
 
 import hexaround.config.*;
 import hexaround.game.*;
-import hexaround.required.CreatureName;
-import hexaround.required.CreatureProperty;
-import hexaround.required.MoveResponse;
-import hexaround.required.MoveResult;
+import hexaround.EnumsAndDefinitions.CreatureName;
+import hexaround.EnumsAndDefinitions.CreatureProperty;
+import hexaround.EnumsAndDefinitions.MoveResponse;
+import hexaround.EnumsAndDefinitions.MoveResult;
 import org.junit.jupiter.api.*;
 
 import java.awt.*;
 import java.io.*;
 import java.util.HashMap;
 
-import static hexaround.required.CreatureName.*;
+import static hexaround.EnumsAndDefinitions.CreatureName.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class Sub2Tests {
@@ -90,6 +90,26 @@ public class Sub2Tests {
 
         testGameManager.placeCreature(CreatureName.CRAB, 1, -2);
         testGameManager.placeCreature(CreatureName.CRAB, 2, 0);
+    }
+
+    public void setup3 () {
+        try {
+            testGameManager = HexAroundGameBuilder.buildTestGameManager("testConfigurations/fourthConfig.hgc");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 0);
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 1);
+
+        testGameManager.placeCreature(CreatureName.DOVE, 0, -1);
+        testGameManager.placeCreature(CreatureName.CRAB, -1, 2);
+
+        testGameManager.placeCreature(CreatureName.CRAB, -1, -1);
+        testGameManager.placeCreature(CreatureName.DOVE, 0, 2);
+
+        testGameManager.placeCreature(CreatureName.HORSE, 1, -2);
+        testGameManager.placeCreature(CreatureName.DOVE, 1, 1);
+
     }
 
     // not placing
@@ -416,6 +436,7 @@ public class Sub2Tests {
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-1,0).moveResult()); // illegal cause occupied (unsure why failing)
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-3,0).moveResult()); // illegal cause too far
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-3,0).moveResult()); // illegal cause too far
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE,0,2,-3,10).moveResult()); // illegal cause too far
         assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE,0,2,-1,1).moveResult()); // red legal move
         assertTrue(testGameManager.getBoard().isOccupied(-1,1));
         assertFalse(testGameManager.getBoard().isOccupied(0,2));
@@ -445,6 +466,8 @@ public class Sub2Tests {
         assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, -1, -1, 0).moveResult());
         assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, 2, 0, 2, -2).moveResult());
 
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -1, 0).moveResult()); // no movement!
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -1, 10).moveResult()); // out of range
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -1, 3).moveResult()); // out of range
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, 0, -2, 1).moveResult()); // disconnection
         assertEquals(MoveResult.OK, testGameManager.moveCreature(TURTLE, -1, 0, -2, 3).moveResult()); // legal move!
@@ -552,6 +575,7 @@ public class Sub2Tests {
         assertEquals(MoveResult.OK, testGameManager.placeCreature(HORSE, 0, 2).moveResult());
 
         // invalid moves with the horse
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(HORSE, 0, -1, -1, 10).moveResult()); // out of range
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(HORSE, 0, -1, -1,0).moveResult()); // too short!
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(HORSE, 0, -1, -1,1).moveResult()); // too short!
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(HORSE, 0, -1, -1,2).moveResult()); // too short!
@@ -595,13 +619,61 @@ public class Sub2Tests {
         assertEquals(MoveResult.MOVE_ERROR, testGameManager.placeCreature(DOVE, 0, -3).moveResult()); // needs to place butterfly
         assertEquals(MoveResult.OK, testGameManager.placeCreature(BUTTERFLY, 0, -3).moveResult()); // needs to place butterfly
     }
-    // test with a movement of 0
     @Test
-    void testNoMovement() throws IOException {
-        this.setup();
-        // true cases
-        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(TURTLE, -1, -1, -1,-1).moveResult());
-        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE, 0, -2, 0,-2).moveResult());
+    void testSwapping() throws IOException {
+        this.setup3();
+        // swaps crab and butterfly
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(CRAB, -1,-1,0,-1).moveResult());
+        assertEquals(CRAB, testGameManager.getBoard().getCreatureAt(0,-1).getDef().name());
+        assertEquals(DOVE, testGameManager.getBoard().getCreatureAt(-1,-1).getDef().name());
+
+        assertEquals(MoveResult.MOVE_ERROR, testGameManager.moveCreature(DOVE, 0,2,0,0).moveResult()); // cannot swap with the butterfly!
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(DOVE, 0,2,0,-1).moveResult());
+        assertEquals(DOVE, testGameManager.getBoard().getCreatureAt(0,-1).getDef().name());
+        assertFalse(testGameManager.getBoard().getCreatureAt(0,-1).getTeam());
+        assertEquals(CRAB, testGameManager.getBoard().getCreatureAt(0,2).getDef().name());
+        assertTrue(testGameManager.getBoard().getCreatureAt(0,2).getTeam());
+
+    }
+
+    @Test
+    void testJumpingSwap() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager("testConfigurations/fifthConfig.hgc");
+
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 0);
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 1);
+
+        testGameManager.placeCreature(GRASSHOPPER, 0, -1);
+        testGameManager.placeCreature(DOVE, 0, 2);
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(GRASSHOPPER, 0,-1, 0,2).moveResult());
+        assertEquals(DOVE, testGameManager.getBoard().getCreatureAt(0,-1).getDef().name());
+        assertFalse(testGameManager.getBoard().getCreatureAt(0,-1).getTeam());
+        assertEquals(GRASSHOPPER, testGameManager.getBoard().getCreatureAt(0,2).getDef().name());
+        assertTrue(testGameManager.getBoard().getCreatureAt(0,2).getTeam());
+
+    }
+
+    @Test
+    void testKamikazeJumping() throws IOException {
+        testGameManager = (TestHexAround) HexAroundGameBuilder.buildTestGameManager("testConfigurations/fifthConfig.hgc");
+
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 0);
+        testGameManager.placeCreature(CreatureName.BUTTERFLY, 0, 1);
+
+        testGameManager.placeCreature(HORSE, 0, -1);
+        testGameManager.placeCreature(DOVE, -1, 2);
+
+        testGameManager.placeCreature(DOVE, -1, 0);
+        testGameManager.placeCreature(DOVE, 0, 2);
+
+        assertEquals(MoveResult.OK, testGameManager.moveCreature(HORSE, 0,-1, 0,2).moveResult());
+        assertNull(testGameManager.getBoard().getCreatureAt(0,-1));
+
+        assertEquals(HORSE, testGameManager.getBoard().getCreatureAt(0,2).getDef().name());
+        assertTrue(testGameManager.getBoard().getCreatureAt(0,2).getTeam());
+
+        assertEquals(5, testGameManager.getBoard().size());
     }
 
 

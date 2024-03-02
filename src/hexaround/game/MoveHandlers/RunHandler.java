@@ -12,9 +12,7 @@ public class RunHandler extends MoveHandler {
     }
     @Override
     public boolean checkLegality() {
-        // TODO: fix now that walk hanlder is changed
-        // this piece moves in a straight line, max distance h
-        // this code is very close in resemblence to walking, but with the key difference being that the distance needs to be exactly equal to the max
+        // Code is very similar to Walking with the one key exception being the exit condition also requires the distance to be exactly max.
         if(this.creature.getDef().maxDistance() < this.boardCopy.getDistance(this.fromPoint,this.toPoint)) {
             return false;
         }
@@ -32,11 +30,10 @@ public class RunHandler extends MoveHandler {
         int goalDist;
         visited.add(this.fromPoint);
 
-        this.boardCopy.remove(this.fromPoint); // as we are currently "moving" we are not on the board, (each move places ourselves at the point of fromPoint.
+        this.boardCopy.remove(this.fromPoint);
 
         while(!movementQueue.isEmpty()) {
             current = movementQueue.pop();
-//            System.out.printf("fromP: (%d,%d), toP: (%d,%d), stepsLeft: %d\n", current.fromP.x, current.fromP.y, current.toP.x,current.toP.y, current.stepsLeft);
             visited.add(current.fromP);
             boolean previousOcc = this.boardCopy.isOccupied(current.toP);
             if(!previousOcc) {
@@ -56,21 +53,18 @@ public class RunHandler extends MoveHandler {
             if(!previousOcc) {
                 this.boardCopy.remove(current.toP);
             }
-            if(legalCheck1 && legalCheck2 && legalCheck3 && legalCheck4) { // this move is legal,
-                if(current.toP.equals(this.toPoint) && current.stepsLeft == 1) {// we've reached the goal!!!!
+            if(legalCheck1 && legalCheck2 && legalCheck3 && legalCheck4) {
+                if(current.toP.equals(this.toPoint) && current.stepsLeft == 1) {
                     return true;
                 }
 
                 neighbors = this.boardCopy.getNeighbors(current.toP);
 
-                // this is only checking for unoccupied cells, the while loop for each potential move handles the rest
+                // this is only checking for unoccupied cells unless it's the goal the while loop for each potential move handles the rest
                 for(Point p : neighbors) {
                     if (!this.boardCopy.isOccupied(p) && !visited.contains(p) || p.equals(this.toPoint))
                         movementQueue.add(new MoveHelper(current.toP, p, current.stepsLeft - 1));
                 }
-            }
-            else {
-//                System.out.printf("Walking Creature LegalChecks [%b, %b, %b, %b]\n", legalCheck1,legalCheck2,legalCheck3, legalCheck4);
             }
         }
         return false;

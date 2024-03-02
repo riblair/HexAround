@@ -9,9 +9,7 @@
  *  2) You may not remove this copyright, even if you have modified this file.
  */
 
-package hexaround.required;
-
-import hexaround.required.*;
+package hexaround.EnumsAndDefinitions;
 
 /**
  * This is what is returned from making a move in a game.
